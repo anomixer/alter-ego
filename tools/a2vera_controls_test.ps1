@@ -1,7 +1,7 @@
 param([switch]$SkipAudio)
 $ErrorActionPreference='Stop'
-iex (Get-Content -Raw 'C:\dev\alter-ego\tools\a2vera_windows.ps1')
-iex (Get-Content -Raw 'C:\dev\alter-ego\tools\a2vera_cpu.ps1')
+iex (Get-Content -Raw (Join-Path $PSScriptRoot 'a2vera_windows.ps1'))
+iex (Get-Content -Raw (Join-Path $PSScriptRoot 'a2vera_cpu.ps1'))
 $s=Get-AEGameSymbols
 function V([string]$name) { return [AECPU]::Byte($s['_'+$name]) }
 function Wait-State([scriptblock]$predicate,[string]$description,[int]$timeout=12) {

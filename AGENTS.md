@@ -1,5 +1,17 @@
 # AGENTS.md — alter-ego Apple II VERA port
 
+## Repository name (2026-11-01)
+
+- This repository was called `alter-ego-vera` while VERA was the only Apple II target.  It is now
+  **`alter-ego`**, because it also hosts the Apple IIgs port under `iigs/`; the local checkout is
+  `C:\dev\alter-ego`.
+- Release image filenames keep their `alter-ego-vera*` names (`alter-ego-vera.hdv`,
+  `alter-ego-vera-psg.hdv`, `alter-ego-vera-D1.po`, `alter-ego-vera-D2.po`): they are artifact names,
+  not the repository name, and renaming them would break the documented release paths.
+- The VERA regression scripts under `tools/` still hardcode `C:\dev\alter-ego\...` (their historical
+  location).  That path is now the actual checkout, so they work again; keep that in mind if the
+  checkout ever moves.
+
 ## Release image names (2026-10-14)
 
 - The live FamiTone release uses `build/a2vera/alter-ego-vera.hdv`.

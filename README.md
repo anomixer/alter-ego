@@ -1,14 +1,27 @@
-# Alter Ego — Apple II VERA Port
+# Alter Ego — Apple II ports
 
-This repository contains the Apple II VERA port of the NES homebrew game
-Alter Ego. The original NES source is available at
+Two Apple II targets are built in this repository from the NES homebrew game Alter Ego; the original
+NES source is available at
 [github.com/avshabanov/alter-ego](https://github.com/avshabanov/alter-ego).
+
+| Target | Sources | Deliverable |
+| --- | --- | --- |
+| Apple II / II+ / IIe with a VERA card | this directory (`src/a2vera/`) | `build/a2vera/alter-ego-vera-psg.hdv` (PSG, default) plus the FamiTone and dual-floppy variants |
+| Apple IIgs / silky-gs | [`iigs/`](iigs/README.md) | [`build/iigs/AlterEgo.2mg`](build/iigs/AlterEgo.2mg) |
+
+The repository used to be called `alter-ego-vera` while VERA was the only target; it is now plain
+`alter-ego`.  Release images keep their `alter-ego-vera*` filenames — those are artifact names, not
+the repository name — and the VERA regression scripts under `tools/` still expect the checkout at
+`C:\dev\alter-ego`, which is now its actual location.
 
 ![Alter Ego title screen running on Apple II VERA](1.png)
 
 ![Alter Ego gameplay running on Apple II VERA](2.png)
 
-## Build and run
+## Build and run — VERA
+
+The Apple IIgs port is described in [Apple IIgs port](#apple-iigs-port-silky-gs) below; its full
+build notes are in [`iigs/README.md`](iigs/README.md).
 
 The image builder and packer are kept in this repository. It bundles the Cadius
 Windows executable, the Applesoft BASIC compiler, the PSG stream
@@ -215,7 +228,7 @@ Pause offers Resume,
 Restart (while reserves remain), and Exit Game; with zero reserves it offers
 Resume and Exit Game.
 
-## Verification
+### Verification
 
 Actual AppleWin runs have loaded all 26 levels and reached the ending using
 Select skips, with snapshot checks for maps, CHR banks, intact program memory,
@@ -272,6 +285,105 @@ Tools and runtime notes are described in [AGENTS.md](AGENTS.md) and
 temporary captures under `build/a2vera/shots`. Run them with
 `iex (Get-Content -Raw tools/a2vera_smoke.ps1)` or
 `iex (Get-Content -Raw tools/a2vera_gameplay_test.ps1)`.
+
+## Apple IIgs port (silky-gs)
+
+The same game also runs on the Apple IIgs through
+[silky-gs](https://github.com/lscharen/iigs-game-engine), a native 65816 NES runtime: the NES program
+executes as a coroutine next to the GS task, and its PPU/APU traffic is translated to Super Hi-Res
+graphics and DOC audio.  It is not an emulator, and no VERA card is involved.  The port reuses the
+original 32 KB NES program, the original FamiTone2 music/SFX data and the NES level data; the 65816
+side supplies the screen, the palette pipeline and the audio mixing.
+
+- **Boot image:** [`build/iigs/AlterEgo.2mg`](build/iigs/AlterEgo.2mg) — a 10 MB ProDOS image,
+  volume `ALTEREGO`, with the program `/ALTEREGO/AlterEgoGS.S16` (313,359 bytes).  The source of that
+  program is `iigs/`; see [`iigs/README.md`](iigs/README.md) and [`iigs/AGENTS.md`](iigs/AGENTS.md).
+- **Screen:** 320×200 Super Hi-Res.  The 256×200 playfield is centred at `x_offset=16` and maps NES
+  scanlines 16–215; the title and credits are full-screen NES content.  Gameplay uses the engine's
+  dirty-grid renderer, so only changed background cells and sprites are drawn each frame.
+- **Audio:** the original FamiTone2 driver and song data, mixed by the engine at 60 Hz (60/120/240 Hz
+  is selectable in the silky-gs panel) and played by the IIgs DOC.  `MUSIC OFF` silences gameplay and
+  ending music as well as the title theme.
+- **Speed:** at the factory 2.8 MHz setting a full gameplay render fits inside one VBL and the sea
+  keeps its original 16-frame animation cadence (about 30 fps).  Booting at 16 MHz reaches the title
+  in about 20 seconds, versus 2–3 minutes at 2.8 MHz.
+- **NES program:** `iigs/src/games/alterego/prg.bin` must stay exactly 32,768 bytes.  The shipped
+  file is reproduced byte for byte from the objects kept in [`iigs/prg-src/`](iigs/prg-src/README.md)
+  (SHA256 `C4CB0445…`), so a PRG change is rebuilt there with cc65 and relinked before the Merlin
+  build.
+
+![Alter Ego title screen on the Apple IIgs (GSplus)](iigs/docs/screenshots/shot_final_title.png)
+
+![Alter Ego gameplay on the Apple IIgs (GSplus)](iigs/docs/screenshots/shot_final_aligned_game.png)
+
+Run it in GSplus with the checked-in configuration:
+
+```powershell
+Start-Process C:\dev\emu\GSplus\gsplus.exe `
+  -ArgumentList '-cfg', (Resolve-Path iigs\emu\gsplus-alterego.kegs).Path
+```
+
+Click the GSplus window, wait for the title, then press **Return**; inputs sent before the title
+appears are lost.  The `.kegs` file's `s7d1` entry points at `build/iigs/AlterEgo.2mg`, so it follows
+this checkout as long as the repository stays at `C:\dev\alter-ego` (edit `s7d1` if it moves).
+Rebuilding the application needs Node.js, Merlin32 and Cadius; repackage the boot image with Cadius
+`REPLACEFILE` as described in [`iigs/README.md`](iigs/README.md).  `npm run test` in `iigs/` boots the
+committed image in GSplus and asserts that the title and Level 1 screens actually drew (pixel checks
+on GSplus' own screenshots), so a rendering regression fails the run instead of only being noticed by
+eye.
+
+| Input | Action |
+|---|---|
+| Arrow keys | Move/climb, and choose menu lines |
+| Z / Space | NES A; in the sound test, Space auditions the selected SFX/BGM |
+| X | NES B |
+| Return / P | Start, pause, confirm |
+| Tab | NES Select; opens and closes the sound test on the title |
+| Left / Right on title | Change the START LEVEL value (0–25; 0 is the hidden Cow Level) |
+| ? (Shift-/) | Open the silky-gs options panel (audio, input, drivers, credits) |
+
+The title menu, sound test, pause menu and Cow Level work as in the VERA build, with two exceptions
+forced by the one-key-at-a-time keyboard shim: the NES key chords cannot be typed, so the A+B
+sound-test chord and the `K, A, J, K, A, J` level unlock are unreachable — use **Tab** for the sound
+test and **START LEVEL 00** for the Cow Level.
+
+### Verification
+
+Verified in GSplus: title, credits, sound test, pause menu, Level 1, and the game → pause → EXIT GAME
+→ title round trip.  The level-start music hold was checked frame by frame through a level start: the
+music stays on LEVEL CLEAR, is silent from the black load screen through the READY blink, and resumes
+on the frame the ego becomes controllable.  A full play-through from boot to the ending on 2026-11-01
+ran normally (the player's report, not an automated check), so the later levels, LEVEL CLEAR and the
+WELL DONE ending are exercised in practice; the repository still has no screenshots of those screens
+or of GAME OVER.  The dated log, engine constraints and open items are in
+[`iigs/AGENTS.md`](iigs/AGENTS.md).
+
+## Documentation
+
+Design records and notes, grouped by port.
+
+**Apple IIgs / silky-gs**
+
+- [`iigs/README.md`](iigs/README.md) — the port itself: repository layout, build, GSplus run, controls
+  and current status.
+- [`iigs/AGENTS.md`](iigs/AGENTS.md) — dated work log, engine constraints and the open items.
+- [`docs/PORT-IIGS-SILKY-EVAL.md`](docs/PORT-IIGS-SILKY-EVAL.md) — the feasibility study that started
+  the port (in Chinese): NES PPU/APU measured against Super Hi-Res and the DOC, the 320×200 layout,
+  tile/sprite budgets and the limits of the silky-gs runtime.
+- [`docs/PORT-IIGS-TITLE-POC.md`](docs/PORT-IIGS-TITLE-POC.md) — the title-screen proof of concept:
+  what already rendered, the black-screen root cause, and the `prg.bin` recipe that survived it.
+- [`iigs/prg-src/README.md`](iigs/prg-src/README.md) — the cc65 staging tree that rebuilds the shipped
+  NES program byte for byte.
+
+**Apple II / VERA**
+
+- [`docs/PORT-APPLE2-EVAL.md`](docs/PORT-APPLE2-EVAL.md) — the earlier Apple II feasibility study
+  (in Chinese), including the `//e` DHGR direction that was closed.
+- [`docs/APPLE2-REWRITE.md`](docs/APPLE2-REWRITE.md) — VERA runtime notes.
+- [`docs/FAMITONE-VERA-PSG.md`](docs/FAMITONE-VERA-PSG.md) — FamiTone → VERA PSG player and timing
+  details.
+- [`docs/archive/apple2e/`](docs/archive/apple2e/) — archived `//e` material; see
+  [`IMPORT-NOTES.md`](docs/archive/apple2e/IMPORT-NOTES.md) for what was dropped.
 
 ## Credits
 

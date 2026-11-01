@@ -1,0 +1,10 @@
+# Make sure files are ordered to satify forward dependencies
+scaffold.s
+rom_color.s
+rom_tiles.s
+rom_helpers.s
+rom_input.s
+rom_kbd_j13.s
+rom_exec.s
+rom_config.s
+rom_config_setup.s
