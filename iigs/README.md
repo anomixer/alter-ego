@@ -3,14 +3,15 @@
 This directory is the Apple IIgs work for the cc65 NES homebrew **Alter Ego**, built on
 [silky-gs](https://github.com/lscharen/iigs-game-engine) (a native 65816 NES runtime, not an emulator).
 
-This `iigs/` tree is added **alongside** the existing Apple II VERA port in this repository; the VERA
-sources, tools and docs are not replaced or deleted.
+This `iigs/` tree sits **alongside** the Apple II VERA port, which now lives in `vera/`; the repository
+root itself mirrors upstream `avshabanov/alter-ego` (only `README.md` differs), so neither port edits
+the shared NES sources.
 
 It is a snapshot of the working tree that was used to bring Alter Ego up on GSplus, including the
 current bootable 3.5" image:
 
-- **Boot image:** [`../build/iigs/AlterEgo.2mg`](../build/iigs/AlterEgo.2mg) (10 MB ProDOS image)
-- **Application:** [`../build/iigs/AlterEgoGS`](../build/iigs/AlterEgoGS) (313,359 bytes)
+- **Boot image:** [`build/AlterEgo.2mg`](build/AlterEgo.2mg) (10 MB ProDOS image)
+- **Application:** [`build/AlterEgoGS`](build/AlterEgoGS) (313,359 bytes)
 - **Current screen:** ![Alter Ego gameplay on GSplus](docs/screenshots/shot_final_aligned_game.png)
 - **Credits:** ![Alter Ego credits on GSplus](docs/screenshots/shot_final_credits.png)
 - **Title:** ![Alter Ego title on GSplus](docs/screenshots/shot_final_title.png)
@@ -70,25 +71,22 @@ current bootable 3.5" image:
 
 ## Repository layout
 
-The deliverable lives **outside this tree**, in `build/iigs/`, the way the VERA port keeps its
-images in `build/a2vera/`.
+The deliverable lives in `iigs/build/`, next to the sources; the VERA port keeps its images in
+`vera/build/` the same way, and the repository root keeps the upstream NES tree untouched.
 
 ```
 iigs/                                     (sources)
+  build/                 deliverable: AlterEgo.2mg (bootable image), AlterEgoGS (S16 application)
   src/games/alterego/    Alter Ego port: Main.s, Config.s, Hooks.s, game C/asm, assets, build.js
   src/core/, src/ppu/    silky-gs engine (the runtime this port is built on)
   scripts/               build, palette and image tooling
   prg-src/               NES PRG staging tree (cc65) that rebuilds src/games/alterego/prg.bin
   macros/, src/rom/      shared Merlin32 macros and NES-ROM wrappers
-  emu/gsplus-*.kegs      GSplus configuration; s7d1 points at ../build/iigs/AlterEgo.2mg
+  emu/gsplus-*.kegs      GSplus configuration; s7d1 points at iigs/build/AlterEgo.2mg
   docs/screenshots/      reference captures
   docs/SILKY-GS-UPSTREAM-README.md   upstream silky-gs README
   AGENTS.md              working log, constraints and next steps
   CLAUDE.md              upstream engine guide (kept for reference)
-
-../build/iigs/                            (deliverable)
-  AlterEgo.2mg           current bootable image (also the image the user reviews)
-  AlterEgoGS             the S16 application; build.js copies it here after assembly
 ```
 
 
@@ -134,11 +132,11 @@ Cadius replaces a file in place; stage the app under its ProDOS name first:
 ```powershell
 cd iigs
 New-Item -ItemType Directory tmp\repackage -Force | Out-Null
-Copy-Item ..\build\iigs\AlterEgoGS 'tmp\repackage\AlterEgoGS.S16#B3DB03' -Force
-& C:\dev\cadius.exe REPLACEFILE ..\build\iigs\AlterEgo.2mg /ALTEREGO 'tmp\repackage\AlterEgoGS.S16#B3DB03'
+Copy-Item build\AlterEgoGS 'tmp\repackage\AlterEgoGS.S16#B3DB03' -Force
+& C:\dev\cadius.exe REPLACEFILE build\AlterEgo.2mg /ALTEREGO 'tmp\repackage\AlterEgoGS.S16#B3DB03'
 ```
 
-The image in `build/iigs/` is a build artifact as well as the reference image, so replace it deliberately.
+The image in `build/` is a build artifact as well as the reference image, so replace it deliberately.
 
 ## Run in GSplus
 
@@ -161,7 +159,7 @@ above, so the sea animates without dropping below about 30 fps.
 
 ## Test
 
-`npm run test` from `iigs/` boots the committed `../build/iigs/AlterEgo.2mg`, asserts that the title
+`npm run test` from `iigs/` boots the committed `build/AlterEgo.2mg`, asserts that the title
 screen drew, presses Return and asserts that Level 1 came up.  Both assertions are pixel checks on
 GSplus' own F10 screenshots (title: no grey playfield frame, large orange logo; Level 1: grey frame
 plus teal water), so the test fails if the renderer stops drawing those screens rather than merely if
@@ -169,7 +167,7 @@ the emulator dies:
 
 ```
 Alter Ego / Apple IIgs smoke test
-  image : C:\dev\alter-ego\build\iigs\AlterEgo.2mg (10485824 bytes)
+  image : C:\dev\alter-ego\build\AlterEgo.2mg (10485824 bytes)
   emu   : C:\dev\emu\GSplus\gsplus.exe
   shots : C:\dev\alter-ego\iigs\tmp\test
   title : after 12.1s (grey 24, orange 3132, teal 28)
@@ -184,7 +182,7 @@ PASS
 - Options: `--keep` leaves GSplus running with `tmp/test/title.png` and `tmp/test/level1.png` for
   inspection; `--boot-timeout <s>` (default 180) and `--level-timeout <s>` (default 120) widen the
   windows for a slow build.  `AE_GS_GSPLUS` overrides the emulator path.
-- It uses the image already in `build/iigs/`; it does not rebuild or repackage it.  `npm run
+- It uses the image already in `build/`; it does not rebuild or repackage it.  `npm run
   build:alterego` (Merlin32 + Cadius, from `src/games/alterego/`) and the `REPLACEFILE` recipe above
   produce the image the test checks.
 

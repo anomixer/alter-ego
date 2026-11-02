@@ -6,7 +6,44 @@ node_modules/
 /src/games/**/*_Output.txt
 /src/games/**/*_Symbols.txt
 
-# Merlin32 load file: build.js copies it to build/iigs/AlterEgoGS, which is the
+# Merlin32 load file: build.js copies it to build/AlterEgoGS, which is the
 # tracked deliverable, so the copy in the source tree stays local.
 /src/games/alterego/AlterEgoGS
 
+# The boot image and the S16 application are tracked; Cadius packs, repackaging
+# scratch and old images in this directory stay local.
+/build/*
+!/build/AlterEgo.2mg
+!/build/AlterEgoGS
+
+# Local scratch: emulator captures, throw-away harnesses and test screenshots.
+/tmp/
+
+# Reference captures: only the images cited by README.md and AGENTS.md (plus the
+# ones committed earlier) are tracked; the large set of investigation captures
+# stays local.
+/docs/screenshots/*
+!/docs/screenshots/credits_iigs_version.png
+!/docs/screenshots/crop_char_y0.png
+!/docs/screenshots/crop_char_y8.png
+!/docs/screenshots/ego_flash_palette_compare.png
+!/docs/screenshots/exchange_sea_after.png
+!/docs/screenshots/exchange_sea_before.png
+!/docs/screenshots/exchange_sea_fixed_path.png
+!/docs/screenshots/exchange_sea_fixed_path_wave.png
+!/docs/screenshots/exchange_sea_old_path.png
+!/docs/screenshots/level1_28mhz.png
+!/docs/screenshots/shot_config_menu.png
+!/docs/screenshots/shot_final_aligned_game.png
+!/docs/screenshots/shot_final_credits.png
+!/docs/screenshots/shot_final_game_audio.png
+!/docs/screenshots/shot_final_game_moved.png
+!/docs/screenshots/shot_final_title.png
+!/docs/screenshots/shot_final_title_prompt.png
+!/docs/screenshots/shot_y0_upper.png
+!/docs/screenshots/shot_y8_final.png
+!/docs/screenshots/title_28mhz.png
+
+# Python bytecode caches.
+__pycache__/
+*.py[cod]

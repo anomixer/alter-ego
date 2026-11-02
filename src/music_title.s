@@ -1,6 +1,6 @@
 music_title_module:
 	.word @chn0,@chn1,@chn2,@chn3,@chn4,music_instruments
-	.byte $07 ; original FamiTone row speed, at one tick per 60 Hz VSYNC
+	.byte $07
 
 @chn0:
 @chn0_0:
@@ -15,9 +15,9 @@ music_title_module:
 	.byte $25,$22,$20,$45,$1e,$1d,$25,$46,$22,$20,$1e,$47,$1d,$25,$22,$9f
 @chn0_loop:
 @chn0_3:
-	.byte $80
+	.byte $bf
 	.byte $fe
-	.word @chn0
+	.word @chn0_loop
 
 @chn1:
 @chn1_0:
@@ -32,9 +32,9 @@ music_title_module:
 	.byte $52,$15,$86,$53,$14,$8a,$4f,$12,$aa
 @chn1_loop:
 @chn1_3:
-	.byte $80
+	.byte $bf
 	.byte $fe
-	.word @chn1
+	.word @chn1_loop
 
 @chn2:
 @chn2_0:
@@ -56,9 +56,9 @@ music_title_module:
 	.byte $82,$06,$89,$3f,$9f
 @chn2_loop:
 @chn2_3:
-	.byte $80
+	.byte $bf
 	.byte $fe
-	.word @chn2
+	.word @chn2_loop
 
 @chn3:
 @chn3_0:
@@ -80,9 +80,9 @@ music_title_module:
 	.byte $02,$03,$04,$05,$06,$07,$08,$09,$0a,$0b,$3f,$9e
 @chn3_loop:
 @chn3_3:
-	.byte $80
+	.byte $bf
 	.byte $fe
-	.word @chn3
+	.word @chn3_loop
 
 @chn4:
 @chn4_0:

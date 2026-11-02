@@ -6,7 +6,7 @@ s5d2 =
 s6d1 = 
 s6d2 = 
 
-s7d1 = C:\dev\alter-ego\build\iigs\AlterEgo.2mg
+s7d1 = C:\dev\alter-ego\iigs\build\AlterEgo.2mg
 
 g_cfg_rom_path = C:\dev\emu\ap2\rom.v3
 nohwaccel = 1

@@ -1,7 +1,25 @@
 # AGENTS.md — Alter Ego / Apple IIgs work log
 
 This file is the working log and hand-off for the **Apple IIgs (silky-gs)** port. It supersedes the
-archived `//e` notes in the repository root. Dates are Asia/Taipei.
+archived `//e` notes in `vera/docs/archive/apple2e/`. Dates are Asia/Taipei.
+
+## 2026-11-02 — repository layout: root mirrors upstream, ports moved into subdirectories
+
+- The repository root now matches upstream `avshabanov/alter-ego` again (`LICENSE`, `Makefile`,
+  `.gitignore`, `src/`; only `README.md` differs), so the shared NES sources are upstream's and the
+  Apple //e edits that used to sit in `src/game.c` are archived at
+  `vera/docs/archive/apple2e/src-game-2026-11-02.c`.
+- Everything for this port stayed under `iigs/`, but the deliverable moved from the repository-level
+  `build/iigs/` into **`iigs/build/`**: `AlterEgo.2mg` and `AlterEgoGS` keep their bytes (verified
+  after the move: `node scripts/test-alterego.mjs` passes, title after 10.0 s, Level 1 after 2.3 s),
+  and `build.js` now publishes to `iigs/build/`.  Paths updated in `build.js`,
+  `scripts/test-alterego.mjs`, `emu/gsplus-alterego.kegs` (`s7d1` → `C:\dev\alter-ego\iigs\build\AlterEgo.2mg`),
+  `README.md`, `CHANGES.md` and `package.json`.
+- Ignore rules for this tree are in `iigs/.gitignore` (root `.gitignore` is upstream's): `build/`
+  tracks only the two deliverables, and `/tmp/` plus `__pycache__/` stay local.
+- The dated entries below quote the pre-move (`build/iigs/...`) and pre-rename paths as labels; use
+  the layout above for anything current.
+
 
 ## 2026-11-01g — full play-through reported normal
 
@@ -20,7 +38,7 @@ archived `//e` notes in the repository root. Dates are Asia/Taipei.
 - **New entry point.**  `iigs/package.json` now has `"test": "node scripts/test-alterego.mjs"`
   (the engine's vitest suite moved to `"test:unit"`, which it already had) and
   `"build:alterego": "cd src/games/alterego && node build.js"`.
-- **What it asserts.**  Boot `../build/iigs/AlterEgo.2mg` in GSplus, wait for the title screen, press
+- **What it asserts.**  Boot `build/AlterEgo.2mg` in GSplus, wait for the title screen, press
   **Return** once, wait for Level 1 — and check *pixels*, not just that the process is alive.  The
   signatures are colours that only appear in quantity on the screen they belong to, measured on the
   reference captures: title = grey 24 / orange 3132 / teal 28 (no grey playfield frame, big orange
@@ -44,7 +62,7 @@ archived `//e` notes in the repository root. Dates are Asia/Taipei.
   `--boot-timeout <s>` (default 180 — a 2.8 MHz build needs minutes), `--level-timeout <s>`
   (default 120); `AE_GS_GSPLUS` overrides the emulator path.  Captures land in `iigs/tmp/test/`, which
   is now gitignored together with the repository's `tmp/`.
-- It does **not** rebuild: it checks whatever `build/iigs/AlterEgo.2mg` currently holds, so run
+- It does **not** rebuild: it checks whatever `build/AlterEgo.2mg` currently holds, so run
   `npm run build:alterego` + the Cadius `REPLACEFILE` recipe first if the application changed.
 
 ## 2026-11-01e — repository renamed to `alter-ego`
@@ -54,7 +72,7 @@ archived `//e` notes in the repository root. Dates are Asia/Taipei.
   checkout path is `C:\dev\alter-ego`, and every documented path was rewritten to match.
 - Git history, branches and artifacts are untouched: the VERA release images keep their
   `alter-ego-vera*` filenames (artifact names, not the repository name) and the IIgs deliverable stays
-  `build/iigs/AlterEgo.2mg`.
+  `build/AlterEgo.2mg`.
 - `README.md` now leads with a two-target table instead of "Apple II VERA Port"; the root `AGENTS.md`
   records the rename.
 - Until the rename is done in the GitHub web UI (Settings → Rename repository), `origin` keeps the old
@@ -65,14 +83,14 @@ archived `//e` notes in the repository root. Dates are Asia/Taipei.
 - **`test/gs` was fast-forward merged into `master` on 2026-11-01** and then deleted,
   so the port is now on the repository's mainline, which is the only branch left; `master` is the
   default branch on GitHub.
-- `build/iigs/AlterEgo.2mg` boots in GSplus; verified: title, credits, sound test, pause menu, level 1,
+- `build/AlterEgo.2mg` boots in GSplus; verified: title, credits, sound test, pause menu, level 1,
   and the game → pause → EXIT GAME → title round trip.  `npm run test` covers the boot → title →
   Level 1 path automatically (2026-11-01f), and the user played the port from boot to the ending on
   2026-11-01 and reported it normal (2026-11-01g), so levels 2–5 and the ending screens are confirmed
   in practice.  Current hashes are in the 2026-11-01c entry (hashes quoted in older entries are older
   artefacts); rebuild recipes are in "Rebuilding `prg.bin` from the C sources".
 - **The deliverable moved out of `iigs/` on 2026-11-01**: the boot image and the S16 application now
-  live in `build/iigs/`, next to the VERA port's images in `build/a2vera/` — see the 2026-11-01c
+  live in `build/`, next to the VERA port's images in `vera/build/` — see the 2026-11-01c
   entry.  Older entries below quote the pre-move paths (`iigs/emu/…`, `iigs/src/games/alterego/…`).
 - Boot image renamed `AlterEgoJml.2mg` → **`AlterEgo.2mg`** (and the kegs to `gsplus-alterego.kegs`)
   — see the 2026-11-01 entry.  The volume and program names inside the image did not change.
@@ -98,7 +116,7 @@ archived `//e` notes in the repository root. Dates are Asia/Taipei.
     `prg.bin` was linked from; the screenshots and the `game_menu*` / `prg_*` experiment variants were
     left behind).  Verified: the documented `ld65` line there reproduces `prg.bin` **byte for byte**,
     32,768 bytes, SHA256 `C4CB0445…`.
-  - `docs/PORT-APPLE2-EVAL.md`, `docs/PORT-IIGS-SILKY-EVAL.md`, `docs/PORT-IIGS-TITLE-POC.md` and
+  - `vera/docs/PORT-APPLE2-EVAL.md`, `docs/PORT-IIGS-SILKY-EVAL.md`, `docs/PORT-IIGS-TITLE-POC.md` and
     `build/level0_dhgr.png` moved up into `docs/`.
   - the //e work was archived under **`docs/archive/apple2e/`**: the *uncommitted* `src/game.c`
     rewrite (`src-game.c`), the //e `AGENTS.md` / `README.md`, and the //e investigation tools
@@ -110,29 +128,29 @@ archived `//e` notes in the repository root. Dates are Asia/Taipei.
 - `iigs/src/games/alterego/neslib_silky.s` and `iigs/prg-src/neslib_silky.s`, and the two
   `game_apop1.c` copies, are still duplicates that must be kept byte-identical (documented above).
 
-## 2026-11-01c — deliverable moved to `build/iigs/`
+## 2026-11-01c — deliverable moved to `build/`
 
-- Artefacts now live outside the source tree, aligned with the VERA port's `build/a2vera/`:
-  - `iigs/emu/AlterEgo.2mg` → **`build/iigs/AlterEgo.2mg`** (boot image, tracked),
-  - `iigs/src/games/alterego/AlterEgoGS` → **`build/iigs/AlterEgoGS`** (S16 application, tracked),
-  - `iigs/emu/AlterEgoOld.2mg` → `build/iigs/AlterEgoOld.2mg`, then **deleted** the same day: it is the
+- Artefacts now live outside the source tree, aligned with the VERA port's `vera/build/`:
+  - `iigs/emu/AlterEgo.2mg` → **`build/AlterEgo.2mg`** (boot image, tracked),
+  - `iigs/src/games/alterego/AlterEgoGS` → **`build/AlterEgoGS`** (S16 application, tracked),
+  - `iigs/emu/AlterEgoOld.2mg` → `build/AlterEgoOld.2mg`, then **deleted** the same day: it is the
     2026-10-29 image (application 313,192 B, SHA256 `0C4005C5…`) and predates the 2026-10-31 music hold,
     so keeping it only invited confusion.  Nothing tracked ever referenced it.
   The GSplus configuration stays at `iigs/emu/gsplus-alterego.kegs`; its `s7d1` now points at
-  `C:\dev\alter-ego\build\iigs\AlterEgo.2mg`.
+  `C:\dev\alter-ego\build\AlterEgo.2mg`.
 - `src/games/alterego/build.js` now **publishes** the assembled load file: after `buildNromGame`
   (which compacts Merlin32's DSK in place in the game directory) it copies `AlterEgoGS` into
-  `build/iigs/`.  Merlin32 still writes its DSK and listings into `iigs/src/games/alterego/`, which is
+  `build/`.  Merlin32 still writes its DSK and listings into `iigs/src/games/alterego/`, which is
   now ignored (`.gitignore`: `/src/games/alterego/AlterEgoGS`) so a rebuild does not dirty the tree.
-- Root `.gitignore` gained the `/build/iigs/` allowlist mirroring the `a2vera` block, so
+- Root `.gitignore` gained the `/build/` allowlist mirroring the `a2vera` block, so
   `AlterEgo.2mg` and `AlterEgoGS` are tracked while everything else in that directory stays local.
-- Repackage and run recipes updated to the new paths (`..\build\iigs\AlterEgoGS` →
-  `tmp\repackage\…`, `REPLACEFILE ..\build\iigs\AlterEgo.2mg`).
+- Repackage and run recipes updated to the new paths (`build\AlterEgoGS` →
+  `tmp\repackage\…`, `REPLACEFILE build\AlterEgo.2mg`).
 - Verified after the move: `node build.js` prints
   `C:\dev\alter-ego\iigs\src\games\alterego\AlterEgoGS: 387398 -> 313359 bytes` and
-  `published ..\..\..\..\build\iigs\AlterEgoGS`; the image was repacked from that file and GSplus boots
+  `published ..\..\..\build\AlterEgoGS`; the image was repacked from that file and GSplus boots
   it to level 1 on the first Return (`try 0: score=365`).
-- Current artefacts: **`build/iigs/AlterEgo.2mg`** 10,485,824 B, SHA256 `93A3004F…`; **`build/iigs/AlterEgoGS`**
+- Current artefacts: **`build/AlterEgo.2mg`** 10,485,824 B, SHA256 `93A3004F…`; **`build/AlterEgoGS`**
   313,359 B, SHA256 `88281425…`.  The application bytes are identical to the pre-move build (the rebuild
   reproduced them exactly — the Merlin link is deterministic here), so the image only changed because
   Cadius rewrote the directory entry when it was repacked (its SHA256 therefore no longer matches the
@@ -720,8 +738,8 @@ AlterEgoGS: 333302 -> 268275 bytes
 ```powershell
 cd C:\dev\alter-ego\iigs
 New-Item -ItemType Directory tmp\repackage -Force | Out-Null
-Copy-Item ..\build\iigs\AlterEgoGS 'tmp\repackage\AlterEgoGS.S16#B3DB03' -Force
-& C:\dev\cadius.exe REPLACEFILE ..\build\iigs\AlterEgo.2mg /ALTEREGO 'tmp\repackage\AlterEgoGS.S16#B3DB03'
+Copy-Item build\AlterEgoGS 'tmp\repackage\AlterEgoGS.S16#B3DB03' -Force
+& C:\dev\cadius.exe REPLACEFILE build\AlterEgo.2mg /ALTEREGO 'tmp\repackage\AlterEgoGS.S16#B3DB03'
 ```
 
 Cadius takes the ProDOS type from the `#B3DB03` suffix; staging the file as plain `AlterEgoGS.S16`
@@ -820,18 +838,20 @@ symptom is the title screen drawn but the game ignoring every key (see the 2026-
   the pre-squash branches were deleted once the squashed history was pushed.
 - **History squashed twice on 2026-11-01.**  The day's work was first squashed into the port commit,
   then squashed again at the end of the day: all 13 commits of 2026-11-01 — the port, the move to
-  `build/iigs/`, the archived `//e` import, the rename to `alter-ego` and the README work — are a
+  `build/`, the archived `//e` import, the rename to `alter-ego` and the README work — are a
   **single commit on top of `fc19266`** (the VERA port).  **Every commit hash quoted in the dated
   entries below is a pre-squash label and no longer resolves on `master`**; keep them as labels only.
 - Inside that single commit: the whole port plus the 2026-10-30/31 title-palette, X/Z, sound-test and
-  level-start music-hold work, the `emu/AlterEgo.2mg` rename, `build/iigs/` as the deliverable
+  level-start music-hold work, the `emu/AlterEgo.2mg` rename, `build/` as the deliverable
   directory, `iigs/prg-src/`, `docs/archive/apple2e/`, and the two-target README — see the entries at
   the top of this file and `CHANGES.md`.
 - The VERA port at the repository root keeps its own release commit `fc19266`; `iigs/` is additive to
   it.
-- Untracked files (`iigs/docs/screenshots/*`, `iigs/src/games/alterego/credits.h`) are investigation
-  captures/generated headers and are not part of the deliverable — do not add them with `git add -A`.
-  `build/iigs/AlterEgoOld.2mg` used to be listed here; it was deleted on 2026-11-01.
+- The ~170 investigation captures in `iigs/docs/screenshots/` stay local: `iigs/.gitignore` ignores
+  that directory and allowlists only the 20 reference images that are tracked (the ones cited by
+  `README.md` / `AGENTS.md` plus the earlier committed evidence).  `credits.h` in
+  `src/games/alterego/` is generated and tracked.  Do not add captures with `git add -A`.
+  `build/AlterEgoOld.2mg` used to be listed here; it was deleted on 2026-11-01.
 
 ## Next steps
 

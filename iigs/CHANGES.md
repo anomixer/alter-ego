@@ -71,8 +71,8 @@ the source tree, the archived `//e` tree, the repository rename and the two-targ
 ### Files and build
 
 - **Deliverables moved out of the source tree:** the boot image and the application are now
-  `build/iigs/AlterEgo.2mg` and `build/iigs/AlterEgoGS`, next to the VERA port's images in
-  `build/a2vera/`.  `build.js` publishes the assembled application there, and the GSplus configuration
+  `build/AlterEgo.2mg` and `build/AlterEgoGS`, next to the VERA port's images in
+  `vera/build/`.  `build.js` publishes the assembled application there, and the GSplus configuration
   (`iigs/emu/gsplus-alterego.kegs`) points at the new image.  The stale 2026-10-29 image
   (`AlterEgoOld.2mg`) was deleted.
 - The boot image was renamed `AlterEgoJml.2mg` → **`AlterEgo.2mg`** and the configuration to
@@ -81,8 +81,8 @@ the source tree, the archived `//e` tree, the repository rename and the two-targ
 - `prg.bin` must stay exactly 32,768 bytes; it is reproduced byte for byte from the objects imported
   into `iigs/prg-src/` with cc65 + `ld65`, so a PRG change is rebuilt there and relinked before the
   Merlin build.
-- The shipped artefacts are `build/iigs/AlterEgo.2mg` (10,485,824 bytes, SHA256 `93A3004F…`),
-  `build/iigs/AlterEgoGS` (313,359 bytes, SHA256 `88281425…`) and `iigs/src/games/alterego/prg.bin`
+- The shipped artefacts are `build/AlterEgo.2mg` (10,485,824 bytes, SHA256 `93A3004F…`),
+  `build/AlterEgoGS` (313,359 bytes, SHA256 `88281425…`) and `iigs/src/games/alterego/prg.bin`
   (32,768 bytes, SHA256 `C4CB0445…`).
 
 ### Repository

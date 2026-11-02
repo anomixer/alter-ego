@@ -19,7 +19,7 @@ const SCRIPT_DIR = dirname(fileURLToPath(import.meta.url));
 const IIGS_ROOT = resolve(SCRIPT_DIR, '..');
 const REPO_ROOT = resolve(IIGS_ROOT, '..');
 
-const IMAGE = join(REPO_ROOT, 'build', 'iigs', 'AlterEgo.2mg');
+const IMAGE = join(IIGS_ROOT, 'build', 'AlterEgo.2mg');
 const KEGS = join(IIGS_ROOT, 'emu', 'gsplus-alterego.kegs');
 const SHOTS = join(IIGS_ROOT, 'tmp', 'test');
 const INPUT_HELPER = join(SCRIPT_DIR, 'gsplus-input.ps1');

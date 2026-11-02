@@ -1,0 +1,113 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=800">
+<title>Alter Ego (NES) — web player</title>
+<style>
+  :root { color-scheme: dark; }
+  html, body { margin: 0; min-height: 100%; background: #0b0b10; color: #d8d8e0;
+    font: 14px/1.5 "Segoe UI", system-ui, sans-serif; }
+  body { min-height: 100vh; display: flex; flex-direction: column; align-items: center;
+    justify-content: center; gap: 14px; padding: 24px; box-sizing: border-box; overflow: auto; }
+  header { text-align: center; }
+  h1 { margin: 0 0 2px; font-size: 18px; font-weight: 600; letter-spacing: .06em; }
+  .sub { color: #8b8b9a; font-size: 12px; }
+  /* flex: none keeps the 256:240 box from being squashed by the column layout
+     (that squashing used to leave a black band on the right of the canvas). */
+  #stage { position: relative; flex: none; width: min(768px, 100%); aspect-ratio: 256 / 240;
+    background: #000; border: 1px solid #26263a; border-radius: 6px; overflow: hidden; }
+  #screen { position: absolute; inset: 0; }
+  /* jsnes sets inline pixel sizes from fitInParent(); overriding them keeps the
+     canvas exactly filling the 256:240 stage, at any window size. */
+  #screen canvas { display: block; width: 100% !important; height: 100% !important;
+    image-rendering: pixelated; }
+  /* Fullscreen: centre a 256:240 box inside the screen instead of a tiny canvas
+     in the corner (that is what "F is not really fullscreen" looked like). */
+  #stage:fullscreen { width: 100vw; height: 100vh; aspect-ratio: auto; border: 0; border-radius: 0;
+    display: flex; align-items: center; justify-content: center; background: #000; }
+  #stage:fullscreen #screen { position: relative; inset: auto; width: min(100vw, calc(100vh * 256 / 240));
+    aspect-ratio: 256 / 240; }
+  #overlay { position: absolute; inset: 0; display: flex; flex-direction: column; gap: 6px;
+    align-items: center; justify-content: center; text-align: center; cursor: pointer;
+    background: rgba(0, 0, 0, .72); border: 0; color: inherit; font: inherit; }
+  #overlay strong { font-size: 16px; letter-spacing: .08em; }
+  #overlay span { color: #9a9aac; font-size: 12px; }
+  #overlay[hidden] { display: none; }
+  .bar { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; justify-content: center; }
+  button { background: #1b1b26; color: #d8d8e0; border: 1px solid #34344a; border-radius: 4px;
+    padding: 5px 11px; font: inherit; cursor: pointer; }
+  button:hover { background: #24243a; }
+  #status { color: #8b8b9a; font-size: 12px; min-height: 18px; text-align: center; }
+
+  #pad button { min-width: 40px; padding: 5px 8px; touch-action: none;
+    user-select: none; -webkit-user-select: none; }
+  #pad .sep { width: 12px; }
+  #keys { color: #9a9aac; font-size: 12px; text-align: center; max-width: 720px; }
+  #keys kbd, footer kbd { background: #1b1b26; border: 1px solid #34344a; border-radius: 3px;
+    padding: 0 4px; color: #d8d8e0; font: 11px/1.6 ui-monospace, monospace; }
+  footer { color: #5d5d70; font-size: 11px; text-align: center; }
+  a { color: #8f8fff; text-decoration: none; }
+  a:hover, a:focus-visible { text-decoration: underline; }
+  body.dragging #stage { outline: 2px solid #4a4a80; outline-offset: 4px; }
+</style>
+</head>
+<body>
+  <header>
+    <h1>ALTER EGO</h1>
+    <div class="sub">NES original, playable in the browser (<a href="https://github.com/bfirsh/jsnes" target="_blank" rel="noopener noreferrer">jsnes 2.1.0</a>)</div>
+  </header>
+
+  <div id="stage">
+    <div id="screen"></div>
+    <button id="overlay" type="button">
+      <strong>Click to play</strong>
+      <span>The first click also unlocks audio, as browsers require</span>
+    </button>
+  </div>
+
+  <div class="bar">
+    <button id="reset" type="button">Reset</button>
+    <button id="pause" type="button">Pause</button>
+    <button id="mute" type="button">Mute</button>
+    <label for="volume">Volume</label>
+    <input id="volume" type="range" min="0" max="100" value="90" step="5" aria-label="Volume">
+    <button id="fullscreen" type="button">Fullscreen</button>
+    <button id="pick" type="button">Load another .nes</button>
+    <input id="file" type="file" accept=".nes,application/octet-stream" hidden>
+  </div>
+
+  <div class="bar" id="pad" aria-label="Controller">
+    <button type="button" data-pad="left" aria-label="Left">←</button>
+    <button type="button" data-pad="up" aria-label="Up">↑</button>
+    <button type="button" data-pad="down" aria-label="Down">↓</button>
+    <button type="button" data-pad="right" aria-label="Right">→</button>
+    <span class="sep"></span>
+    <button type="button" data-pad="b" aria-label="B">B</button>
+    <button type="button" data-pad="a" aria-label="A">A</button>
+    <button type="button" data-pad="select" aria-label="Select">SELECT</button>
+    <button type="button" data-pad="start" aria-label="Start">START</button>
+  </div>
+
+  <div id="status">Loading…</div>
+
+  <div id="keys">
+    <kbd>↑ ↓ ← →</kbd> move &nbsp;·&nbsp; <kbd>X</kbd> A (exchange) &nbsp;·&nbsp; <kbd>Z</kbd> B &nbsp;·&nbsp;
+    <kbd>Enter</kbd> / <kbd>Space</kbd> START &nbsp;·&nbsp; <kbd>Ctrl</kbd> SELECT &nbsp;·&nbsp;
+    <kbd>R</kbd> reset &nbsp;·&nbsp; <kbd>F</kbd> fullscreen &nbsp;·&nbsp; a <code>.nes</code> file can also be
+    dropped on the page
+  </div>
+
+  <footer>
+    Cold boot plays the original NES credits first (English, as on the cartridge); press
+    <kbd>Space</kbd> to skip to the title.<br>
+    No ROM is shipped: <code>build-rom.mjs</code> compiles <code>src/</code> locally and embeds the result.
+    Emulator: <a href="https://github.com/bfirsh/jsnes" target="_blank" rel="noopener noreferrer">jsnes 2.1.0</a> (Apache-2.0).
+  </footer>
+
+<script src="vendor/jsnes.min.js"></script>
+<script src="audio.js"></script>
+<script src="build/rom-base64.js"></script>
+<script src="app.js"></script>
+</body>
+</html>

@@ -1,0 +1,13 @@
+# VERA build output.  The builder and the four release images are tracked; every
+# intermediate (objects, unpacked ProDOS trees, listings, staged music banks) and
+# every emulator capture stays local.
+/build/*
+!/build/build_a2vera.ps1
+!/build/alter-ego-vera.hdv
+!/build/alter-ego-vera-psg.hdv
+!/build/alter-ego-vera-D1.po
+!/build/alter-ego-vera-D2.po
+
+# Python bytecode caches from the asset/validation tools.
+__pycache__/
+*.py[cod]

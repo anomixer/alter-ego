@@ -1,22 +1,31 @@
-# Alter Ego — Apple II ports
+# Alter Ego — NES source, Apple II ports, browser player
 
-Two Apple II targets are built in this repository from the NES homebrew game Alter Ego; the original
-NES source is available at
-[github.com/avshabanov/alter-ego](https://github.com/avshabanov/alter-ego).
+This is a working fork of [avshabanov/alter-ego](https://github.com/avshabanov/alter-ego), the NES
+homebrew game Alter Ego.  The repository root mirrors upstream — the same `Makefile`, `src/`,
+`LICENSE` and `.gitignore` — and every port lives in its own subdirectory; `README.md` is the only
+root file that differs from upstream.
 
-| Target | Sources | Deliverable |
+| Directory | What it is | Deliverable |
 | --- | --- | --- |
-| Apple II / II+ / IIe with a VERA card | this directory (`src/a2vera/`) | `build/a2vera/alter-ego-vera-psg.hdv` (PSG, default) plus the FamiTone and dual-floppy variants |
-| Apple IIgs / silky-gs | [`iigs/`](iigs/README.md) | [`build/iigs/AlterEgo.2mg`](build/iigs/AlterEgo.2mg) |
+| root | upstream NES sources: `src/`, `Makefile` | the NES ROM, built by [`web/nes/build-rom.mjs`](web/nes/build-rom.mjs) |
+| [`vera/`](vera/) | Apple II / II+ / IIe with a VERA card (cc65, NMOS 6502) | `vera/build/alter-ego-vera-psg.hdv` (PSG, default), `vera/build/alter-ego-vera.hdv` (FamiTone), and its dual-floppy `-D1.po` / `-D2.po` pair |
+| [`iigs/`](iigs/) | Apple IIgs through silky-gs (65816) | [`iigs/build/AlterEgo.2mg`](iigs/build/AlterEgo.2mg) |
+| [`web/nes/`](web/nes/) | jsnes browser player for the original NES game | [`web/nes/index.html`](web/nes/index.html) — compiles the ROM from `src/`, so no binary is shipped |
 
-The repository used to be called `alter-ego-vera` while VERA was the only target; it is now plain
+The repository was called `alter-ego-vera` while VERA was the only target; it is now plain
 `alter-ego`.  Release images keep their `alter-ego-vera*` filenames — those are artifact names, not
-the repository name — and the VERA regression scripts under `tools/` still expect the checkout at
+the repository name — and the VERA regression scripts under `vera/tools/` still expect the checkout at
 `C:\dev\alter-ego`, which is now its actual location.
 
-![Alter Ego title screen running on Apple II VERA](1.png)
+`make all` at the root is upstream's own NES build.  With a current cc65 (2.19) it needs two changes
+that are *not* made to the upstream files: `src/nes.cfg` still uses the pre-2.19 `SYMBOLS` form and the
+checked-in `src/nes.lib` predates the current library data version.  [`web/nes/build-rom.mjs`](web/nes/build-rom.mjs)
+runs the same five steps with a derived config and the installed library, so it builds the ROM here;
+see [`web/nes/README.md`](web/nes/README.md).
 
-![Alter Ego gameplay running on Apple II VERA](2.png)
+![Alter Ego title screen running on Apple II VERA](vera/1.png)
+
+![Alter Ego gameplay running on Apple II VERA](vera/2.png)
 
 ## Build and run — VERA
 
@@ -34,7 +43,7 @@ assembler, linker, Apple II headers and libraries). Put `cc65.exe` on `PATH` or
 set `CC65_BIN` to cc65's `bin` directory. FamiStudio and
 `C:\dev\veramusic\tools\ftmplay.exe` are only needed when regenerating the
 checked-in music streams; set `FAMISTUDIO` and `FTMPLAY` to their executable
-paths when running `tools/famitone2vera_psg.mjs` manually.
+paths when running `vera/tools/famitone2vera_psg.mjs` manually.
 
 Supported machines are Apple II Plus and newer compatible Apple II models
 with expansion slots, including enhanced Apple IIe. An Apple II+ needs 48 KB
@@ -44,7 +53,7 @@ targets the NMOS 6502 through cc65's `apple2` target and library. The game uses 
 Apple II's main RAM and VERA's own VRAM; it does not use the IIe's auxiliary
 64 KB RAM. It provides 320x240 tile/sprite graphics and VERA PSG.
 The default PSG build creates the bootable image
-`build/a2vera/alter-ego-vera-psg.hdv` (800 KB ProDOS, volume `ALTER.EGO`). It
+`vera/build/alter-ego-vera-psg.hdv` (800 KB ProDOS, volume `ALTER.EGO`). It
 contains all 26 source levels, title/game-over/ending art, ten background
 songs and 15 converted NES effects. DHGR/Mockingboard was explored and closed:
 preserving the NES screen detail required remaking art and text, so VERA is the
@@ -77,9 +86,9 @@ RAM or VERA VRAM and does not read the disk. FTM's live decoding costs CPU
 time, as reflected in the display rates above.
 
 ```powershell
-iex (Get-Content -Raw build/a2vera/build_a2vera.ps1)
+iex (Get-Content -Raw vera/build/build_a2vera.ps1)
 $appleWin = '<path-to-AppleWin-VERA-fork>\AppleWin.exe'
-$image = (Resolve-Path 'build/a2vera/alter-ego-vera-psg.hdv').Path
+$image = (Resolve-Path 'vera/build/alter-ego-vera-psg.hdv').Path
 Start-Process $appleWin -ArgumentList @('-h1', $image, '-s6', 'empty', '-s7', 'hdc', '-model', 'apple2ee', '-s2', 'vera', '-no-full-screen', '-power-on')
 ```
 
@@ -95,10 +104,10 @@ FTM image with:
 ```powershell
 $env:CC65_BIN='C:\dev\cc65\bin'
 $env:AE2VERA_FTM_BUILD='1'
-iex (Get-Content -Raw build/a2vera/build_a2vera.ps1)
+iex (Get-Content -Raw vera/build/build_a2vera.ps1)
 ```
 
-This creates `build/a2vera/alter-ego-vera.hdv`. The PSG variant keeps the
+This creates `vera/build/alter-ego-vera.hdv`. The PSG variant keeps the
 `-psg` suffix and remains the default when `AE2VERA_FTM_BUILD` is unset.
 Cadius reports 438 disk blocks used versus 617 in
 the PSG image, freeing 179 blocks (91,648 bytes allocated) and removing 11
@@ -134,7 +143,7 @@ image builds successfully and has been accepted in gameplay and listening tests.
 The title theme now loops from the beginning after its ending note tail, with
 the former long terminal silence removed.
 Details and memory map are in
-[`docs/FAMITONE-VERA-PSG.md`](docs/FAMITONE-VERA-PSG.md).
+[`vera/docs/FAMITONE-VERA-PSG.md`](vera/docs/FAMITONE-VERA-PSG.md).
 
 In both PSG and FTM builds, music is deliberately silent while a level is
 read and drawn. A continuing theme resumes from the same position after the
@@ -144,8 +153,8 @@ pause between songs. Playback remains steady during normal gameplay.
 ### Dual 5.25-inch FTM disks
 
 The FTM version also builds as two 140 KB ProDOS floppy images:
-`build/a2vera/alter-ego-vera-D1.po` (`ALTER.EGO`) and
-`build/a2vera/alter-ego-vera-D2.po` (`ALTER.EGO.2`). D1 holds ProDOS,
+`vera/build/alter-ego-vera-D1.po` (`ALTER.EGO`) and
+`vera/build/alter-ego-vera-D2.po` (`ALTER.EGO.2`). D1 holds ProDOS,
 startup, both Slot 2/4 binaries, and the resident FamiTone player/data. D2
 holds all 26 levels, graphics files, and a startup-check marker. Before
 launching the game, STARTUP checks D2 and displays
@@ -161,14 +170,14 @@ To rebuild the floppy pair alongside the FTM HDV:
 $env:CC65_BIN='C:\dev\cc65\bin'
 $env:AE2VERA_FTM_BUILD='1'
 $env:AE2VERA_FTM_FLOPPY='1'
-iex (Get-Content -Raw build/a2vera/build_a2vera.ps1)
+iex (Get-Content -Raw vera/build/build_a2vera.ps1)
 ```
 
 For AppleWin, mount both images as Disk II drives:
 
 ```powershell
-$d1=(Resolve-Path 'build/a2vera/alter-ego-vera-D1.po').Path
-$d2=(Resolve-Path 'build/a2vera/alter-ego-vera-D2.po').Path
+$d1=(Resolve-Path 'vera/build/alter-ego-vera-D1.po').Path
+$d2=(Resolve-Path 'vera/build/alter-ego-vera-D2.po').Path
 Start-Process '<path-to-AppleWin-VERA-fork>\AppleWin.exe' -ArgumentList @(
   '-d1',$d1,'-d2',$d2,'-s6','diskii','-s7','empty',
   '-model','apple2ee','-s2','vera','-no-full-screen','-power-on')
@@ -280,11 +289,11 @@ capped at the hardware limit); an offline Level 1 render measured +3.1 dB RMS
 overall. Game sound effects use paired PSG voices for about +6 dB.
 Full NES differential playthrough is still required before claiming 100% parity.
 
-Tools and runtime notes are described in [AGENTS.md](AGENTS.md) and
-[the runtime notes](docs/APPLE2-REWRITE.md). AppleWin regression scripts write
-temporary captures under `build/a2vera/shots`. Run them with
-`iex (Get-Content -Raw tools/a2vera_smoke.ps1)` or
-`iex (Get-Content -Raw tools/a2vera_gameplay_test.ps1)`.
+Tools and runtime notes are described in [vera/AGENTS.md](vera/AGENTS.md) and
+[the runtime notes](vera/docs/APPLE2-REWRITE.md). AppleWin regression scripts write
+temporary captures under `vera/build/shots`. Run them with
+`iex (Get-Content -Raw vera/tools/a2vera_smoke.ps1)` or
+`iex (Get-Content -Raw vera/tools/a2vera_gameplay_test.ps1)`.
 
 ## Apple IIgs port (silky-gs)
 
@@ -295,7 +304,7 @@ graphics and DOC audio.  It is not an emulator, and no VERA card is involved.  T
 original 32 KB NES program, the original FamiTone2 music/SFX data and the NES level data; the 65816
 side supplies the screen, the palette pipeline and the audio mixing.
 
-- **Boot image:** [`build/iigs/AlterEgo.2mg`](build/iigs/AlterEgo.2mg) — a 10 MB ProDOS image,
+- **Boot image:** [`iigs/build/AlterEgo.2mg`](iigs/build/AlterEgo.2mg) — a 10 MB ProDOS image,
   volume `ALTEREGO`, with the program `/ALTEREGO/AlterEgoGS.S16` (313,359 bytes).  The source of that
   program is `iigs/`; see [`iigs/README.md`](iigs/README.md) and [`iigs/AGENTS.md`](iigs/AGENTS.md).
 - **Screen:** 320×200 Super Hi-Res.  The 256×200 playfield is centred at `x_offset=16` and maps NES
@@ -324,7 +333,7 @@ Start-Process C:\dev\emu\GSplus\gsplus.exe `
 ```
 
 Click the GSplus window, wait for the title, then press **Return**; inputs sent before the title
-appears are lost.  The `.kegs` file's `s7d1` entry points at `build/iigs/AlterEgo.2mg`, so it follows
+appears are lost.  The `.kegs` file's `s7d1` entry points at `iigs/build/AlterEgo.2mg`, so it follows
 this checkout as long as the repository stays at `C:\dev\alter-ego` (edit `s7d1` if it moves).
 Rebuilding the application needs Node.js, Merlin32 and Cadius; repackage the boot image with Cadius
 `REPLACEFILE` as described in [`iigs/README.md`](iigs/README.md).  `npm run test` in `iigs/` boots the
@@ -358,6 +367,43 @@ WELL DONE ending are exercised in practice; the repository still has no screensh
 or of GAME OVER.  The dated log, engine constraints and open items are in
 [`iigs/AGENTS.md`](iigs/AGENTS.md).
 
+## Play the NES original in a browser
+
+[`web/nes/index.html`](web/nes/index.html) plays the original NES game through
+[jsnes](https://github.com/bfirsh/jsnes) 2.1.0 (Apache-2.0, vendored in `web/nes/vendor/`).  It is one
+static page — open the file directly or serve the directory — and the ROM it plays is compiled from
+this repository's `src/` and embedded as base64, so the page also works from `file://`:
+
+```powershell
+cd web\nes
+node build-rom.mjs     # cc65/ca65/ld65 -> build/alterego.nes + build/rom-base64.js
+node test.mjs          # headless jsnes smoke test (title -> Start -> Level 1), PASS/FAIL
+```
+
+The ROM (40,976 bytes: 32 KB PRG + 8 KB CHR, mapper 0) is generated and gitignored, so no binary is
+committed; `build-rom.mjs --from <file.nes>` stages an existing ROM instead.  Measured on the
+source-built ROM: title at 252 frames, Level 1 92 frames after the Start press, `PASS`.  The smoke
+test writes `web/nes/build/shots/title.png` and `level1.png`.  Page controls: arrows, `X` = A and `Z` =
+B (exchange), `Enter`/`Space` = START, `Ctrl` = SELECT, `R` reset, `F` fullscreen, numeric-keypad
+`7`/`9`/`1`/`3` for A/B/START/SELECT, and the same pad is on screen under the bar for touch and mouse.
+The bar has Reset / Pause / Mute / Volume / Fullscreen / Load another .nes; any `.nes` file can be
+dropped on the page or opened with its file button.  The page itself is in English.  Reset boots the
+ROM again (jsnes' own `nes.reset()` left the mapper stale and wedged the game), `F` gives a real
+fullscreen, and the canvas always fills the 256:240 stage — no black band on the right.
+
+Two input quirks are handled in `app.js`.  Keys are mapped from `event.code`, not jsnes' `keyCode`
+table, so a Chinese IME (which reports letters as keyCode 229) cannot swallow `X`/`Z`; and because the
+IME also eats their *keyup*, action buttons act as taps and release themselves 400 ms after going down
+-- a stuck A button made the ROM refuse every later exchange, with the exchange counter untouched.
+`window.__ae` in the console reports the last key, the held buttons and the ROM's two HUD counters
+(`hud.exchange` is the number of swaps a level still allows: level 1 gives two).
+
+The first click both starts the game and unlocks audio (the browser's autoplay rule).  Sound is driven
+by `web/nes/audio.js`, not by jsnes' own output: jsnes plays through an `AudioWorklet` that Chrome does
+not load at all from `file://`, which used to leave the page silent with no error.  The status line
+shows the measured path (`Sound: 90% (44100 Hz→48000 Hz)`).  Cold boot opens on the original NES credits
+screen, which is English, as on the cartridge; Space skips it.
+
 ## Documentation
 
 Design records and notes, grouped by port.
@@ -367,23 +413,23 @@ Design records and notes, grouped by port.
 - [`iigs/README.md`](iigs/README.md) — the port itself: repository layout, build, GSplus run, controls
   and current status.
 - [`iigs/AGENTS.md`](iigs/AGENTS.md) — dated work log, engine constraints and the open items.
-- [`docs/PORT-IIGS-SILKY-EVAL.md`](docs/PORT-IIGS-SILKY-EVAL.md) — the feasibility study that started
+- [`iigs/docs/PORT-IIGS-SILKY-EVAL.md`](iigs/docs/PORT-IIGS-SILKY-EVAL.md) — the feasibility study that started
   the port (in Chinese): NES PPU/APU measured against Super Hi-Res and the DOC, the 320×200 layout,
   tile/sprite budgets and the limits of the silky-gs runtime.
-- [`docs/PORT-IIGS-TITLE-POC.md`](docs/PORT-IIGS-TITLE-POC.md) — the title-screen proof of concept:
+- [`iigs/docs/PORT-IIGS-TITLE-POC.md`](iigs/docs/PORT-IIGS-TITLE-POC.md) — the title-screen proof of concept:
   what already rendered, the black-screen root cause, and the `prg.bin` recipe that survived it.
 - [`iigs/prg-src/README.md`](iigs/prg-src/README.md) — the cc65 staging tree that rebuilds the shipped
   NES program byte for byte.
 
 **Apple II / VERA**
 
-- [`docs/PORT-APPLE2-EVAL.md`](docs/PORT-APPLE2-EVAL.md) — the earlier Apple II feasibility study
+- [`vera/docs/PORT-APPLE2-EVAL.md`](vera/docs/PORT-APPLE2-EVAL.md) — the earlier Apple II feasibility study
   (in Chinese), including the `//e` DHGR direction that was closed.
-- [`docs/APPLE2-REWRITE.md`](docs/APPLE2-REWRITE.md) — VERA runtime notes.
-- [`docs/FAMITONE-VERA-PSG.md`](docs/FAMITONE-VERA-PSG.md) — FamiTone → VERA PSG player and timing
+- [`vera/docs/APPLE2-REWRITE.md`](vera/docs/APPLE2-REWRITE.md) — VERA runtime notes.
+- [`vera/docs/FAMITONE-VERA-PSG.md`](vera/docs/FAMITONE-VERA-PSG.md) — FamiTone → VERA PSG player and timing
   details.
-- [`docs/archive/apple2e/`](docs/archive/apple2e/) — archived `//e` material; see
-  [`IMPORT-NOTES.md`](docs/archive/apple2e/IMPORT-NOTES.md) for what was dropped.
+- [`vera/docs/archive/apple2e/`](vera/docs/archive/apple2e/) — archived `//e` material; see
+  [`IMPORT-NOTES.md`](vera/docs/archive/apple2e/IMPORT-NOTES.md) for what was dropped.
 
 ## Credits
 
@@ -392,7 +438,7 @@ Design records and notes, grouped by port.
 * [Original NES Alter Ego source](https://github.com/avshabanov/alter-ego)
 
 Bundled third-party components and their licenses/provenance are listed in
-[THIRD_PARTY_NOTICES.md](THIRD_PARTY_NOTICES.md).
+[vera/THIRD_PARTY_NOTICES.md](vera/THIRD_PARTY_NOTICES.md).
 
 ## Links
 

@@ -1,22 +1,2 @@
 target
 
-# Local Apple II build output (keep the build entry script tracked).
-/build/*
-!/build/a2vera/
-/build/a2vera/*
-!/build/a2vera/build_a2vera.ps1
-
-# The IIgs deliverable lives here too: the boot image and the S16 application are
-# tracked; old images and scratch packs in that directory stay local.
-!/build/iigs/
-/build/iigs/*
-!/build/iigs/AlterEgo.2mg
-!/build/iigs/AlterEgoGS
-
-# Local scratch: emulator captures, throw-away harnesses and test screenshots.
-/iigs/tmp/
-/tmp/
-
-# Python bytecode caches.
-__pycache__/
-*.py[cod]

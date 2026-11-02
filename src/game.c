@@ -1,48 +1,5 @@
 #include "neslib.h"
 
-#ifdef __APPLE2ENH__
-// Apple //e build: the four full-screen art tables are disk files.  HELLO
-// (Applesoft) BLOADs each one to its own staging address before BRUN, so the
-// game reads them as plain memory - see tools/build_a2.ps1.  Measured in
-// AppleWin, the in-program DOS-command emission (CR / Ctrl-D / line / CR
-// through COUT after JSR $03EA, the kit's protocol) wedges: the PC ends in the
-// //e Monitor's COUT with a deep stack of return addresses, the CSW hook
-// re-entering itself.  Applesoft's PRINT CHR$(4);"..." path does work, so all
-// startup-time loading goes through HELLO.
-#include "a2/level_stream.h"
-
-/* Brings up the //e port: moves the COLD image (ftm.s + sys.s, the language-card
-   RAM bank the jump stubs land in) from the $1A00 staging HELLO loaded it to,
-   then inits HGR, the Mockingboard and the VRAM shadow.  The NES original needs
-   no such call - the console is already up.  Nothing that touches a cold stub
-   (ppu_waitnmi -> tick_frame/ftm_tick, input_poll, the timers) may run before
-   it, because those stubs jump into the LC bank this routine populates. */
-extern void neslib_init(void);
-
-/* The four DHGR art screens are streamed one at a time through lv_tab; indices
-   26..29 are CREDITSD, TITLED, GAMEOVERD and WELLDONED. */
-#define credits    26
-#define title      27
-#define gameover   28
-#define welldone   29
-
-extern unsigned char __fastcall__ lv_load_art(unsigned char index);
-extern void lv_fail_halt(void);
-
-/* Full-screen DHGR art is decoded from the interleaved 80-slot page stream.
-   The direct-screen flag keeps the gameplay tile compositor from replacing a
-   cutscene while its palette fade and wait loop run. */
-extern void __fastcall__ dhgr_draw_screen(const void *rle);
-extern void __fastcall__ dhgr_direct_on(void);
-extern void __fastcall__ dhgr_direct_off(void);
-#define art_screen(p)  do { if (lv_load_art((unsigned char)(p))) lv_fail_halt(); \
-                             dhgr_draw_screen((const void *)0x1004); dhgr_direct_on(); } while (0)
-#define art_screen_disk(p) art_screen(p)
-
-/* (The NES form uses nametable shadows and remains below.) */
-
-#else
-
 #include "credits.h"
 #include "title.h"
 #include "map0.h"
@@ -71,14 +28,8 @@ extern void __fastcall__ dhgr_direct_off(void);
 #include "map23.h"
 #include "map24.h"
 #include "map25.h"
-#define MAP_PTR(n) map##n
 #include "gameover.h"
 #include "welldone.h"
-
-/* NES form of the full-screen art call: decode into the nametable shadow. */
-#define art_screen(p)  unrle_vram(p,0x2000)
-
-#endif
 #include "palettes.h"
 
 
@@ -171,27 +122,6 @@ const char versionStr[]="Alter Ego v1.023a 21.02.17";
 
 //music pointers list
 
-#ifdef __APPLE2ENH__
-// Apple //e build: the FamiTone image is not linked into the program.  The
-// disk file MUSIC is BLOAD-ed to $4800 at startup (src/a2/lvload.s) and every
-// module address below is the address that image was linked at, read out of the
-// link map by tools/a2_music_offsets.py.  See src/a2/a2_music.cfg for why the
-// image has to be linked at its runtime address.
-#include "a2/music_offsets.h"
-
-const unsigned char *musicData[MUS_ALL]={
-MUSPTR_TITLE,
-MUSPTR_GAME1,
-MUSPTR_GAME2,
-MUSPTR_GAME3,
-MUSPTR_GAME4,
-MUSPTR_GAME5,
-MUSPTR_GAMEOVER,
-MUSPTR_WELLDONE
-};
-
-#else
-
 extern const unsigned char music_title_data[];
 extern const unsigned char music_level1_data[];
 extern const unsigned char music_level2_data[];
@@ -211,8 +141,6 @@ music_level5_data,
 music_gameover_data,
 music_done_data
 };
-
-#endif
 
 //tile type flags
 
@@ -239,32 +167,32 @@ TILE_LADDER,TILE_WALL  ,TILE_WALL ,TILE_WALL
 };
 
 const unsigned char* level_ptrs[26*2]={
-MAP_PTR(0),palGameBG1,
-MAP_PTR(1),palGameBG1,
-MAP_PTR(2),palGameBG1,
-MAP_PTR(3),palGameBG1,
-MAP_PTR(4),palGameBG1,
-MAP_PTR(5),palGameBG1,
-MAP_PTR(6),palGameBG2,
-MAP_PTR(7),palGameBG2,
-MAP_PTR(8),palGameBG2,
-MAP_PTR(9),palGameBG2,
-MAP_PTR(10),palGameBG2,
-MAP_PTR(11),palGameBG3,
-MAP_PTR(12),palGameBG3,
-MAP_PTR(13),palGameBG3,
-MAP_PTR(14),palGameBG3,
-MAP_PTR(15),palGameBG3,
-MAP_PTR(16),palGameBG4,
-MAP_PTR(17),palGameBG4,
-MAP_PTR(18),palGameBG4,
-MAP_PTR(19),palGameBG4,
-MAP_PTR(20),palGameBG4,
-MAP_PTR(21),palGameBG5,
-MAP_PTR(22),palGameBG5,
-MAP_PTR(23),palGameBG5,
-MAP_PTR(24),palGameBG5,
-MAP_PTR(25),palGameBG5
+map0,palGameBG1,
+map1,palGameBG1,
+map2,palGameBG1,
+map3,palGameBG1,
+map4,palGameBG1,
+map5,palGameBG1,
+map6,palGameBG2,
+map7,palGameBG2,
+map8,palGameBG2,
+map9,palGameBG2,
+map10,palGameBG2,
+map11,palGameBG3,
+map12,palGameBG3,
+map13,palGameBG3,
+map14,palGameBG3,
+map15,palGameBG3,
+map16,palGameBG4,
+map17,palGameBG4,
+map18,palGameBG4,
+map19,palGameBG4,
+map20,palGameBG4,
+map21,palGameBG5,
+map22,palGameBG5,
+map23,palGameBG5,
+map24,palGameBG5,
+map25,palGameBG5
 };
 
 //restarts, sync type
@@ -567,7 +495,7 @@ void credits_screen(void)
 {
 	ppu_off();
 	pal_clear();
-	art_screen(credits);
+	unrle_vram(credits,0x2000);
 	ppu_on_bg();
 	fade_screen_in(palTitleBG);
 
@@ -591,18 +519,13 @@ void title_screen(void)
 	ppu_off();
 	pal_clear();
 	oam_clear();
-	art_screen(title);
-#ifndef __APPLE2ENH__
-	/* The NES scrolls between two 1KB nametables; the //e has one 280x192 HGR
-	   page, so the second nametable fill and the $26xx text erasures that go
-	   with it have no meaning there. */
+	unrle_vram(title,0x2000);
 	unrle_vram(title,0x2400);
 
 	vram_adr(0x26ca);//erase text from second page
 	for(i=0;i<12;i++) vram_put(0);
 	vram_adr(0x26ea);
 	for(i=0;i<12;i++) vram_put(0);
-#endif
 
 	scroll(256,0);
 	ppu_on_all();
@@ -722,11 +645,7 @@ void game_over_screen(void)
 {
 	ppu_off();
 	pal_clear();
-#ifdef __APPLE2ENH__
-	art_screen_disk(gameover);
-#else
-	art_screen(gameover);
-#endif
+	unrle_vram(gameover,0x2000);
 	ppu_on_bg();
 	music_play(musicData[MUS_GAMEOVER]);
 	fade_screen_in(palGameBG1);
@@ -751,19 +670,13 @@ void well_done_screen(void)
 	ppu_off();
 	pal_clear();
 	oam_clear();
-#ifdef __APPLE2ENH__
-	art_screen_disk(welldone);
-#else
-	art_screen(welldone);
+	unrle_vram(welldone,0x2000);
 	unrle_vram(welldone,0x2400);
-#endif
 
-#ifndef __APPLE2ENH__
 	vram_adr(0x2708);//erase text from second page
 	for(i=0;i<17;i++) vram_put(0);
 	vram_adr(0x2728);
 	for(i=0;i<17;i++) vram_put(0);
-#endif
 
 	scroll(256-4,0);
 	ppu_on_all();
@@ -905,16 +818,9 @@ void game_loop(void)
 	ppu_off();
 	pal_clear();
 	oam_clear();
-	if(lv_load((unsigned char)level)) lv_fail_halt();
-	/* RWTS uses the OAM overlay as its T/S-list sector while loading. */
-	oam_clear();
 	unrle_vram(level_ptrs[i],0x2000);
 	vram_read(map,0x20c0,MAP_WDT*MAP_HGT);
 	game_add_background();
-#ifdef __APPLE2ENH__
-	/* Return from the full-screen title/credits surface to the game compositor. */
-	dhgr_direct_off();
-#endif
 	ppu_on_all();
 
 	i=MUS_GAME1+(level == 0 ? 0 : ((level - 1)/5));
@@ -1655,9 +1561,6 @@ void game_loop(void)
 
 void main(void)
 {
-#ifdef __APPLE2ENH__
-	neslib_init();
-#endif
 	level_skip=0;
   first_level = 1;
 

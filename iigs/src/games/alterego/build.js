@@ -31,10 +31,10 @@ try {
 
 buildNromGame(__dirname, 'AlterEgo.s');
 
-// Publish the assembled load file next to the boot image, i.e. in build/iigs/ (the VERA port
-// keeps its images in build/a2vera/ the same way).  Merlin32 writes its DSK into the game
+// Publish the assembled load file next to the boot image, i.e. in build/ (the VERA port
+// keeps its images in vera/build/ the same way).  Merlin32 writes its DSK into the game
 // directory, which stays local and is ignored.
-const publishDir = path.join(__dirname, '..', '..', '..', '..', 'build', 'iigs');
+const publishDir = path.join(__dirname, '..', '..', '..', 'build');
 fs.mkdirSync(publishDir, { recursive: true });
 fs.copyFileSync(path.join(__dirname, 'AlterEgoGS'), path.join(publishDir, 'AlterEgoGS'));
 console.log(`  published ${path.relative(process.cwd(), path.join(publishDir, 'AlterEgoGS'))}`);
