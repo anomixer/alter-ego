@@ -8,6 +8,14 @@
   `alter-ego-vera-psg.hdv`; `AE2VERA_FTM_BUILD` is still honoured as an explicit
   override (1 = FTM, 0 = PSG). `AE2VERA_FTM_FLOPPY=1` builds the D1/D2 pair as
   before.
+- Both release HDVs were rebuilt with the flipped default and then
+  boot-checked in AppleWin before being checked in: STARTUP screen, title menu
+  and Level 1 (HELLO WORLD, HUD `5` reserves and `x2` exchanges) on each, with
+  `SPACE` injected as a tap. `-run-cycles <N> -screenshot-and-exit <file>`
+  gives a headless capture; the FTM level-1 run used 34,000,000 cycles with
+  Space sent at about 17 s. Captures live in `vera/build/shots/`
+  (`ftm-startup.png`, `ftm-title.png`, `ftm-level1.png`, and the `psg-*`
+  equivalents), which `/build` keeps untracked.
 - The FTM target had been broken since the 2026-11-02 directory move:
   `vera/tools/a2vera_ftm_tables.py` still defaulted to the old `build/a2vera`
   path, so `ftm_pitch_table.s` landed outside `vera/build/` and the build died at
@@ -15,10 +23,13 @@
   `"$work\ftm_sfx_data.s"` explicitly, and the Python default points at
   `vera/build/`. Both variants were rebuilt to `RESULT: OK`: FTM 40 files / 438
   blocks used, PSG 51 files / 617 blocks used, and `cadius CHECKVOLUME` passes on
-  both images. The checked-in release HDVs were left untouched by that rebuild.
-- `vera/tools/a2vera_windows.ps1`'s `Capture-AEFrame` now also looks for the BMP
-  in `vera/build/shots` (AppleWin's working directory); its scanner previously
-  only watched `vera/build`, so captures failed.
+  both images. The checked-in release HDVs were then replaced with these
+  rebuilt volumes (see the bullet above).
+- `vera/tools/a2vera_windows.ps1` was stale after that move: it still defaulted
+  to the PSG image, and `Capture-AEFrame` scanned only `vera/build` for `*.bmp`
+  even though current AppleWin writes `AppleWin_ScreenShot_*.png` into its
+  working directory. The default is now `alter-ego-vera.hdv`, and the scan
+  covers both `vera/build` and `vera/build/shots` for `*.png` and `*.bmp`.
 
 ## Directory layout (2026-11-02)
 

@@ -85,6 +85,12 @@ live for compact, steady music. Normal gameplay audio playback uses resident
 RAM or VERA VRAM and does not read the disk. FTM's live decoding costs CPU
 time, as reflected in the display rates above.
 
+Both release images here were rebuilt on 2026-11-03 and boot-checked in
+AppleWin 1.32 (`-model apple2ee -s2 vera`): each one reaches its STARTUP
+screen, the title menu, and Level 1 (HELLO WORLD, five reserves, two
+exchanges) after Space. The `PSG VER` marker appears only on the PSG STARTUP
+screen; the FTM image's STARTUP line reads `ALTER EGO FOR APPLE II VERA`.
+
 ```powershell
 iex (Get-Content -Raw vera/build/build_a2vera.ps1)
 $appleWin = '<path-to-AppleWin-VERA-fork>\AppleWin.exe'

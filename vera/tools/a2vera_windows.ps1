@@ -32,7 +32,7 @@ public class AEWindow {
 '@
 }
 
-function Start-AEEmulator([int]$bootWaitSeconds=10,[ValidateSet(2,4)][int]$veraSlot=2,[string]$imagePath='C:\dev\alter-ego\vera\build\alter-ego-vera-psg.hdv') {
+function Start-AEEmulator([int]$bootWaitSeconds=10,[ValidateSet(2,4)][int]$veraSlot=2,[string]$imagePath='C:\dev\alter-ego\vera\build\alter-ego-vera.hdv') {
   Get-Process AppleWin* -ErrorAction SilentlyContinue | Stop-Process -Force
   $slotArg="-s$veraSlot vera"
   $p=Start-Process 'C:\dev\applewin\release\AppleWin.exe' -WorkingDirectory 'C:\dev\alter-ego\vera\build\shots' -ArgumentList "-h1 $imagePath -s6 empty -s7 hdc -model apple2ee $slotArg -no-full-screen -power-on -log" -PassThru
@@ -65,9 +65,9 @@ function Capture-AEFrame([int]$processId,[string]$output) {
   $before=Get-Date
   [void][AEWindow]::PostMessage($frame.Handle,0x312,[IntPtr]0x404,[IntPtr]0)
   Start-Sleep -Milliseconds 300
-  # AppleWin writes the BMP into its working directory (build\shots) and only
-  # when the frame has focus; check both places the helper has used.
-  $shot=Get-ChildItem 'C:\dev\alter-ego\vera\build','C:\dev\alter-ego\vera\build\shots' -Filter '*.bmp' |
+  # Current AppleWin writes AppleWin_ScreenShot_*.png (older builds wrote
+  # *.bmp), always into the process working directory (build\shots).
+  $shot=Get-ChildItem 'C:\dev\alter-ego\vera\build','C:\dev\alter-ego\vera\build\shots' -Include '*.png','*.bmp' |
     Where-Object LastWriteTime -ge $before | Sort-Object LastWriteTime -Descending | Select-Object -First 1
   if (!$shot) { throw 'AppleWin did not produce a screenshot' }
   Copy-Item -LiteralPath $shot.FullName -Destination $output
