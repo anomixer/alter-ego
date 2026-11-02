@@ -13,7 +13,13 @@ if(-not $root -or -not (Test-Path (Join-Path $root 'vera\src\a2vera\main.c'))){
 }
 $root=(Resolve-Path $root).Path
 $work=Join-Path $root 'vera\build'
-$ftmBuild=$env:AE2VERA_FTM_BUILD -eq '1'
+# The live FamiTone image is the default build.  AE2VERA_PSG_BUILD=1 selects
+# the streamed PSG image instead; AE2VERA_FTM_BUILD is still honoured as an
+# explicit override (1 = FTM, 0 = PSG) for commands written before the flip.
+$psgBuild=$env:AE2VERA_PSG_BUILD -eq '1'
+if($env:AE2VERA_FTM_BUILD -eq '0'){$psgBuild=$true}
+elseif($env:AE2VERA_FTM_BUILD -eq '1'){$psgBuild=$false}
+$ftmBuild=-not $psgBuild
 $cc=$env:CC65_BIN
 if(-not $cc){
   $cc65Command=Get-Command cc65.exe -ErrorAction SilentlyContinue
@@ -47,9 +53,9 @@ if(-not $ftmBuild){
     if($LASTEXITCODE -ne 0){throw "$song PSG validation failed"}
   }
 }else{
-  python "$root\vera\tools\a2vera_ftm_tables.py"
+  python "$root\vera\tools\a2vera_ftm_tables.py" "$work\ftm_tables.h"
   if($LASTEXITCODE -ne 0){throw 'FamiTone table generation failed'}
-  python "$root\vera\tools\a2vera_ftm_sfx.py"
+  python "$root\vera\tools\a2vera_ftm_sfx.py" "$work\ftm_sfx_data.s"
   if($LASTEXITCODE -ne 0){throw 'FamiTone SFX conversion failed'}
   & "$cc\ca65.exe" --cpu 6502 -I "$root\vera\src" -I "$root\src" -D FTM_VERA=1 -o "$work\fami_modules_ftm.o" "$root\vera\src\a2vera\fami_modules.s"
   if($LASTEXITCODE -ne 0){throw 'FamiTone track data assembly failed'}

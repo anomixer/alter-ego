@@ -8,7 +8,7 @@ root file that differs from upstream.
 | Directory | What it is | Deliverable |
 | --- | --- | --- |
 | root | upstream NES sources: `src/`, `Makefile` | the NES ROM, built by [`web/nes/build-rom.mjs`](web/nes/build-rom.mjs) |
-| [`vera/`](vera/) | Apple II / II+ / IIe with a VERA card (cc65, NMOS 6502) | `vera/build/alter-ego-vera-psg.hdv` (PSG, default), `vera/build/alter-ego-vera.hdv` (FamiTone), and its dual-floppy `-D1.po` / `-D2.po` pair |
+| [`vera/`](vera/) | Apple II / II+ / IIe with a VERA card (cc65, NMOS 6502) | `vera/build/alter-ego-vera.hdv` (FamiTone, default), `vera/build/alter-ego-vera-psg.hdv` (streamed PSG), and the FamiTone dual-floppy `-D1.po` / `-D2.po` pair |
 | [`iigs/`](iigs/) | Apple IIgs through silky-gs (65816) | [`iigs/build/AlterEgo.2mg`](iigs/build/AlterEgo.2mg) |
 | [`web/nes/`](web/nes/) | jsnes browser player for the original NES game | [`web/nes/index.html`](web/nes/index.html) — compiles the ROM from `src/`, so no binary is shipped |
 
@@ -52,8 +52,8 @@ startup detects the slot and runs its matching game and music binary. The build
 targets the NMOS 6502 through cc65's `apple2` target and library. The game uses the
 Apple II's main RAM and VERA's own VRAM; it does not use the IIe's auxiliary
 64 KB RAM. It provides 320x240 tile/sprite graphics and VERA PSG.
-The default PSG build creates the bootable image
-`vera/build/alter-ego-vera-psg.hdv` (800 KB ProDOS, volume `ALTER.EGO`). It
+The default FamiTone build creates the bootable image
+`vera/build/alter-ego-vera.hdv` (800 KB ProDOS, volume `ALTER.EGO`). It
 contains all 26 source levels, title/game-over/ending art, ten background
 songs and 15 converted NES effects. DHGR/Mockingboard was explored and closed:
 preserving the NES screen detail required remaking art and text, so VERA is the
@@ -69,7 +69,7 @@ tracks and `SFXBANK`, while FTM includes its music overlays and FamiTone data.
 
 ### FTM and PSG versions
 
-| | Live FTM | Streamed PSG |
+| | Live FTM (default) | Streamed PSG (opt-in) |
 |---|---|---|
 | Choose when | You want compact, live playback of the original NES FamiTone song data and steady music during play | NES sound fidelity and 60 Hz visual updates matter most |
 | Music | Original FamiTone song data decoded by the 6502 and played through VERA PSG | Converted `.PSG` event streams played from VERA VRAM |
@@ -88,27 +88,31 @@ time, as reflected in the display rates above.
 ```powershell
 iex (Get-Content -Raw vera/build/build_a2vera.ps1)
 $appleWin = '<path-to-AppleWin-VERA-fork>\AppleWin.exe'
-$image = (Resolve-Path 'vera/build/alter-ego-vera-psg.hdv').Path
+$image = (Resolve-Path 'vera/build/alter-ego-vera.hdv').Path
 Start-Process $appleWin -ArgumentList @('-h1', $image, '-s6', 'empty', '-s7', 'hdc', '-model', 'apple2ee', '-s2', 'vera', '-no-full-screen', '-power-on')
 ```
 
 To test a Slot 4 card in AppleWin, replace `-s2 vera` with `-s4 vera`.
 
-### Live FamiTone build
+### Streamed PSG build
 
-The default image above streams converted `.PSG` music. The FTM image plays the
-original FamiTone v1.24 song data directly through VERA's PSG, reducing disk
-use. Both versions are playable and have been confirmed by the user. Build the
-FTM image with:
+The default image above plays the original FamiTone v1.24 song data directly
+through VERA's PSG. The streamed `.PSG` variant is built by setting one
+variable:
 
 ```powershell
 $env:CC65_BIN='C:\dev\cc65\bin'
-$env:AE2VERA_FTM_BUILD='1'
+$env:AE2VERA_PSG_BUILD='1'
 iex (Get-Content -Raw vera/build/build_a2vera.ps1)
 ```
 
-This creates `vera/build/alter-ego-vera.hdv`. The PSG variant keeps the
-`-psg` suffix and remains the default when `AE2VERA_FTM_BUILD` is unset.
+This creates `vera/build/alter-ego-vera-psg.hdv`; the FamiTone image keeps the
+unsuffixed `alter-ego-vera.hdv` name and is what the command builds when the
+variable is unset (`AE2VERA_FTM_BUILD=1` still forces FamiTone for older
+commands). The PSG image carries the ten converted `.PSG` songs and the 15
+converted effects, so it needs those files on the volume and uses more space.
+Its STARTUP title prints `PSG VER` at the right edge; the FamiTone title does
+not. Both versions are playable and have been confirmed by the user.
 Cadius reports 438 disk blocks used versus 617 in
 the PSG image, freeing 179 blocks (91,648 bytes allocated) and removing 11
 files. AppleWin has reached the title and Level 1 on this image. The live
@@ -168,7 +172,6 @@ To rebuild the floppy pair alongside the FTM HDV:
 
 ```powershell
 $env:CC65_BIN='C:\dev\cc65\bin'
-$env:AE2VERA_FTM_BUILD='1'
 $env:AE2VERA_FTM_FLOPPY='1'
 iex (Get-Content -Raw vera/build/build_a2vera.ps1)
 ```

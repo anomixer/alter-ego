@@ -1,5 +1,25 @@
 # AGENTS.md — alter-ego Apple II VERA port
 
+## Default image is FamiTone (2026-11-03)
+
+- `vera/build/build_a2vera.ps1` now builds the live FamiTone image by default:
+  `iex (Get-Content -Raw vera/build/build_a2vera.ps1)` writes
+  `vera/build/alter-ego-vera.hdv`. Set `AE2VERA_PSG_BUILD=1` for the streamed
+  `alter-ego-vera-psg.hdv`; `AE2VERA_FTM_BUILD` is still honoured as an explicit
+  override (1 = FTM, 0 = PSG). `AE2VERA_FTM_FLOPPY=1` builds the D1/D2 pair as
+  before.
+- The FTM target had been broken since the 2026-11-02 directory move:
+  `vera/tools/a2vera_ftm_tables.py` still defaulted to the old `build/a2vera`
+  path, so `ftm_pitch_table.s` landed outside `vera/build/` and the build died at
+  `ca65`. The script now passes `"$work\ftm_tables.h"` and
+  `"$work\ftm_sfx_data.s"` explicitly, and the Python default points at
+  `vera/build/`. Both variants were rebuilt to `RESULT: OK`: FTM 40 files / 438
+  blocks used, PSG 51 files / 617 blocks used, and `cadius CHECKVOLUME` passes on
+  both images. The checked-in release HDVs were left untouched by that rebuild.
+- `vera/tools/a2vera_windows.ps1`'s `Capture-AEFrame` now also looks for the BMP
+  in `vera/build/shots` (AppleWin's working directory); its scanner previously
+  only watched `vera/build`, so captures failed.
+
 ## Directory layout (2026-11-02)
 
 - The repository root now mirrors upstream `avshabanov/alter-ego` again (the same `Makefile`, `src/`,
@@ -36,9 +56,10 @@
   Its optional dual-floppy images are `alter-ego-vera-D1.po` and
   `alter-ego-vera-D2.po` in the same directory.
 - The streamed PSG release uses `vera/build/alter-ego-vera-psg.hdv`.
-  Keep `-psg` on this variant only. The default build command still builds
-  PSG; set `AE2VERA_FTM_BUILD=1` for the live FamiTone variant. The PSG STARTUP
-  prints `PSG VER` at the right end of its title line; the FTM title omits it.
+  Keep `-psg` on this variant only. The default build command now builds the
+  live FamiTone variant; set `AE2VERA_PSG_BUILD=1` for PSG (see the 2026-11-03
+  note above). The PSG STARTUP prints `PSG VER` at the right end of its title
+  line; the FTM title omits it.
 - Both HDVs are file-level 800 KB ProDOS volumes. A file-level install copies
   every file from one chosen image to the root of another ProDOS volume, then
   boots that volume and runs `STARTUP`. Keep all files from a build together;
@@ -76,7 +97,8 @@
 - Both `alter-ego-vera-psg.hdv` and `alter-ego-vera.hdv` are playable,
   user-accepted builds. The FTM build is no longer an experimental prototype;
   it plays the original FamiTone modules directly through VERA PSG and uses
-  fewer disk blocks. The PSG build remains the default output of the builder.
+  fewer disk blocks. The FTM build is now the default output of the builder
+  (2026-11-03); PSG is opt-in with `AE2VERA_PSG_BUILD=1`.
   Both now silence music while loading a level; normal gameplay playback is
   steady. Historical experiment notes below record the development process
   and do not describe current release status.
@@ -516,8 +538,8 @@ Deliverable: `vera/build/alter-ego-vera-psg.hdv` (800 KB ProDOS, volume ALTER.EG
 - `vera/build/build_a2vera.ps1` builds all 26 levels and finds the repository
   relative to its own location. From the repository root, set `$env:CC65_BIN`
   if needed, then run `iex (Get-Content -Raw vera/build/build_a2vera.ps1)`
-  for the default PSG HDV. Set `$env:AE2VERA_FTM_BUILD='1'` for the FTM HDV;
-  also set `$env:AE2VERA_FTM_FLOPPY='1'` to build its D1/D2 floppy pair.
+  for the default FTM HDV. Set `$env:AE2VERA_PSG_BUILD='1'` for the PSG HDV;
+  also set `$env:AE2VERA_FTM_FLOPPY='1'` to build the FTM D1/D2 floppy pair.
   See `THIRD_PARTY_NOTICES.md` for bundled component provenance.
 
 - Workspace cleanup on 2026-10-14 removed the DHGR/DOS 3.3 prototype sources,

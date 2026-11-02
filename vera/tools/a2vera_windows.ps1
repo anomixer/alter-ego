@@ -65,7 +65,10 @@ function Capture-AEFrame([int]$processId,[string]$output) {
   $before=Get-Date
   [void][AEWindow]::PostMessage($frame.Handle,0x312,[IntPtr]0x404,[IntPtr]0)
   Start-Sleep -Milliseconds 300
-  $shot=Get-ChildItem 'C:\dev\alter-ego\vera\build' -Filter '*.bmp' | Where-Object LastWriteTime -ge $before | Sort-Object LastWriteTime -Descending | Select-Object -First 1
+  # AppleWin writes the BMP into its working directory (build\shots) and only
+  # when the frame has focus; check both places the helper has used.
+  $shot=Get-ChildItem 'C:\dev\alter-ego\vera\build','C:\dev\alter-ego\vera\build\shots' -Filter '*.bmp' |
+    Where-Object LastWriteTime -ge $before | Sort-Object LastWriteTime -Descending | Select-Object -First 1
   if (!$shot) { throw 'AppleWin did not produce a screenshot' }
   Copy-Item -LiteralPath $shot.FullName -Destination $output
 }

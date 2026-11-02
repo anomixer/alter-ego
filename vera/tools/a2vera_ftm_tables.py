@@ -9,7 +9,7 @@ from pathlib import Path
 
 ROOT = Path(__file__).resolve().parents[2]
 SOURCE = ROOT / "src" / "famitone.s"
-OUT = Path(sys.argv[1]) if len(sys.argv) > 1 else ROOT / "build" / "a2vera" / "ftm_tables.h"
+OUT = Path(sys.argv[1]) if len(sys.argv) > 1 else ROOT / "vera" / "build" / "ftm_tables.h"
 ASM_OUT = OUT.parent / "ftm_pitch_table.s"
 text = SOURCE.read_text(encoding="utf-8")
 match = re.search(r"(?m)^\s*noteTable\s*:\s*;[^\r\n]*([\s\S]*)$", text)
