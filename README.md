@@ -322,9 +322,12 @@ side supplies the screen, the palette pipeline and the audio mixing.
 - **Audio:** the original FamiTone2 driver and song data, mixed by the engine at 60 Hz (60/120/240 Hz
   is selectable in the silky-gs panel) and played by the IIgs DOC.  `MUSIC OFF` silences gameplay and
   ending music as well as the title theme.
-- **Speed:** at the factory 2.8 MHz setting a full gameplay render fits inside one VBL and the sea
-  keeps its original 16-frame animation cadence (about 30 fps).  Booting at 16 MHz reaches the title
-  in about 20 seconds, versus 2–3 minutes at 2.8 MHz.
+- **Speed:** released for a **16 MHz** machine — that is the baseline the captures, the checked-in
+  GSplus configuration and `npm run test` use, and the title comes up in about 20 seconds.  A stock
+  **2.8 MHz** IIgs runs it too: a full gameplay render still fits inside one VBL and the sea keeps its
+  original 16-frame animation cadence (about 30 fps), at the cost of a 2–3 minute boot.  An
+  accelerator in between (a TransWarp GS at 7.1 MHz) sits proportionally between the two — the
+  renderer's per-frame cost is fixed, so smoothness scales roughly with the clock.
 - **NES program:** `iigs/src/games/alterego/prg.bin` must stay exactly 32,768 bytes.  The shipped
   file is reproduced byte for byte from the objects kept in [`iigs/prg-src/`](iigs/prg-src/README.md)
   (SHA256 `C4CB0445…`), so a PRG change is rebuilt there with cc65 and relinked before the Merlin

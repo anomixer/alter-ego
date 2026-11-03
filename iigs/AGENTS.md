@@ -3,6 +3,76 @@
 This file is the working log and hand-off for the **Apple IIgs (silky-gs)** port. It supersedes the
 archived `//e` notes in `vera/docs/archive/apple2e/`. Dates are Asia/Taipei.
 
+## 2026-11-03 — upstream triage (Lucas), silky-gs issue 29, 16 MHz release baseline
+
+### Upstream triage — Lucas Scharenbroich's five suggestions, checked against this port
+
+Lucas replied on Slack (#gte) with five suggestions for speeding up silky-gs games.  Each was checked
+against the sources, not assumed:
+
+- **8x16 fused sprites** (upstream `a15445c`, `SPR_TALL`): **not applicable**.  Alter Ego is 8x8-only
+  — `Alter_Ego.nes` has header `flags6 = 0x01` (bit 5 clear), `prg-src/crt0_silky.s` programs PPUCTRL
+  as `%10000000`, and `_oam_spr`/`_oam_meta_spr` emit 8x8 entries — so the fused 8x16 path never runs
+  for this game.
+- **No double dispatch for shims** (upstream `6502e55`/`62b7ae0`, PPU shadow variables moved into the
+  NES bank): this port already dispatches through the in-bank `$7E00` `JMP` table, so there is no
+  cross-bank fetch of the table, but every entry still ends in `jsl` into the engine bank.  Removing
+  that `jsl` would save a few cycles per call; this game makes a handful of shim calls per frame
+  (PPUCTRL/PPUMASK, 2x PPUSCROLL, 1x OAM DMA), which is ~100 cycles of the 46,666-cycle frame
+  (<0.5%).  Not worth a re-base on its own.
+- **`OAM_END_INDEX`**: already 64 and genuinely full — enemies 0-15, pause metas 16-31, particles
+  48-51, stats 52-59, player 16x16 meta 60-63, so slot 63 is live and there is nothing to trim.
+- **"Disable the attribute/colour-cycle twinkle"**: the mechanism is different here.  The stars are
+  drawn once in `game_add_background`, and the only animated background is the sea, which rewrites
+  nametable **tile indices** every 16 frames (`vram_adr`/`vram_put`) — no attribute writes and no
+  colour cycling.  The analogue would be an optional sea-animation toggle, not a fix.
+- **FPS meter / GSSquared / bootable disk**: the engine's meter exists (`config_video_fps`, VIDEO
+  menu) but `CONFIG_VIDEO_MENU equ 0` hides that menu in this game; GSSquared is installed at
+  `C:\dev\emu\gssquared\GSSquared.exe`; the bootable `.2mg` this port already ships covers upstream's
+  new boot-disk target.  Lucas's point that GSPort/GSplus fps is not a hardware proxy is correct, and
+  matches the 2.8 MHz measurements below (the emulator caps at 2.55 MHz effective on this VM).
+
+### Upstream issue filed
+
+<https://github.com/lscharen/iigs-game-engine/issues/29> — "Pre-built/embedded compiled sprites: data
+point from a CHR-ROM port".  This game is `HAS_CHR_RAM equ 0` (NROM, fixed 8 KB CHR-ROM), i.e. the
+case that optimisation targets.  The issue carries the observation that the v0.0.2 sprite compiler is
+already lazy and cached per (tile, palette, flip) and dispatched through `SPR_COMP_TBL`, so
+pre-building would buy **startup** and cache-miss time, not steady state, plus three design questions
+(scope, CHR-layout assumption, runtime fallback).
+
+The tile-renderer question is drafted in `docs/upstream-issues/tile-renderer.md` and is deliberately
+**not** filed: upstream says that renderer is "not close to ready", and the only thing we need from it
+is whether it changes the PPU shadow/queue ABI (this port is a v0.0.2 snapshot with its own `$7E00`
+shim table, so an ABI change is a porting pass).
+
+### Decision — no re-base onto upstream `main`
+
+Upstream `main` is `aae8fed`; this port is pinned at the v0.0.2 tag (`0c341d2`), 21 commits behind.
+Of the intervening work only the shim change would apply here (<0.5% of a frame, above) and the
+sprite-compiler change does not exist yet; nothing in those commits fixes a defect this port has.
+Adopting them means porting `rom_inject.s`'s rewritten shim layer and `ppu_reg_vars.s` against this
+port's own `neslib_silky.s` / `silky_shims.inc` ABI — high risk, no measured gain.  Revisit if the
+pre-built sprites land, if a port-visible bug appears upstream, or if a frame budget ever gets tight.
+
+### Decision — release speed baseline: 16 MHz
+
+The port is released for a **16 MHz** machine.  That is what the checked-in GSplus configuration, the
+`docs/screenshots/` captures and `npm run test` use (boot to title ~20 s).  It also runs on a stock
+**2.8 MHz** IIgs — gameplay renders at about 30 fps and the boot takes 2-3 minutes, so it is playable
+rather than pleasant — and an accelerator in between (TransWarp GS, 7.1 MHz) sits proportionally
+between the two: the renderer's per-frame cost is fixed, so smoothness scales roughly with the clock.
+`README.md` and `iigs/README.md` now say exactly that; no source or artifact changed.
+
+### Files touched
+
+- `README.md`, `iigs/README.md` — speed/requirements wording (16 MHz baseline, 2.8 MHz playable,
+  accelerators in between).
+- `iigs/CHANGES.md` — the day's entry.
+- `iigs/docs/upstream-issues/compiled-sprites.md`, `tile-renderer.md` — the filed issue text (for the
+  record, with its URL) and the unfiled tile-renderer draft.
+- No source, `prg.bin`, `AlterEgoGS` or `.2mg` change: the artifacts are byte-identical to 2026-11-01.
+
 ## 2026-11-02 — repository layout: root mirrors upstream, ports moved into subdirectories
 
 - The repository root now matches upstream `avshabanov/alter-ego` again (`LICENSE`, `Makefile`,

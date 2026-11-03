@@ -39,6 +39,11 @@ current bootable 3.5" image:
   only the water nametable cells with `vram_adr`/`vram_put`.  The sea therefore animates at the
   original cadence while the rest of the playfield stays static and the dirty grid still runs at
   full speed.
+- **Speed baseline:** the port is released for a **16 MHz** machine, which is what the checked-in
+  GSplus configuration, the `docs/screenshots/` captures and `npm run test` use (boot to title
+  ≈ 20 s).  The factory **2.8 MHz** setting is playable — about 30 fps gameplay and a 2–3 minute
+  boot — and an accelerator in between (a TransWarp GS at 7.1 MHz) scales with the clock, since the
+  renderer's per-frame cost is fixed.
 - The core engine is the upstream **silky-gs v0.0.2** tag (`0c341d2`), merged onto the port's
   v0.0.1-based work.  v0.0.2 changes the keyboard layer (BASIC driver only; the J13/ADB drivers are
   compiled out here), reads A/B from the Command/Option push buttons in the configuration screen,

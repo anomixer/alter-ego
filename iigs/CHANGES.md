@@ -4,6 +4,19 @@ Newest first.  One entry per day of work, so the list lines up with the git hist
 on a given day appears in that day's entry.  Below this port's own entries are the silky-gs engine
 releases it came from.
 
+## 2026-11-03 — speed guidance for release: 16 MHz baseline
+
+Docs only; no source, `prg.bin`, `AlterEgoGS` or `.2mg` change (the artifacts are byte-identical to
+2026-11-01).
+
+- `README.md` and `iigs/README.md` now state the release baseline is **16 MHz**, with the factory
+  **2.8 MHz** setting playable (about 30 fps gameplay, 2–3 minute boot) and an accelerator in between
+  (a TransWarp GS at 7.1 MHz) scaling with the clock.
+- Upstream triage of Lucas Scharenbroich's five suggestions, the filed silky-gs issue
+  (<https://github.com/lscharen/iigs-game-engine/issues/29>) and the decision not to re-base onto
+  upstream `main` are recorded in `iigs/AGENTS.md`; the unfiled tile-renderer question is kept in
+  `iigs/docs/upstream-issues/`.
+
 ## 2026-11-01 — Alter Ego for the Apple IIgs
 
 The day's work is a single (squashed) commit: the port and its polish, the deliverables moved out of
