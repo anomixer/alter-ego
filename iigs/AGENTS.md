@@ -966,6 +966,15 @@ symptom is the title screen drawn but the game ignoring every key (see the 2026-
    normal, so levels 1–5, LEVEL CLEAR and the WELL DONE ending are exercised in practice; the
    repository still has no captures of GAME OVER, WELL DONE, LEVEL CLEAR or levels 2–5.  Capture them
    if they are ever needed as evidence — nothing about the port depends on it.
+7. **Release is ready but deliberately unpublished** (2026-11-03, user: 「先ready好, 不急著release」).
+   Ready means: `npm run test` prints `PASS` on the tracked `build/AlterEgo.2mg` (title 12.2 s,
+   Level 1 2.3 s), and `npm run make:po` regenerates `build/AlterEgo.po` byte-identically every run
+   (SHA256 `8D2B5B36…`, verified twice), so the artifact a2gsemu-ia gets can always be recreated from
+   the committed image.  What is *not* done: no tag, no upload, no GitHub release.  When the time
+   comes the whole job is `cd iigs; npm run make:po`, upload `build/AlterEgo.po` (or the `.2mg`), and
+   tell a2gsemu-ia to run that disk at ≥ 7.1 MHz / 16 MHz — below that the port falls back to its
+   2.8 MHz cadence (about 30 fps, 2–3 minute boot).  A tag name (candidate `iigs-v0.0.2`) is still
+   undecided.
 
 ## Provenance
 
