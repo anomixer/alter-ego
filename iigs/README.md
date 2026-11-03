@@ -143,34 +143,35 @@ Copy-Item build\AlterEgoGS 'tmp\repackage\AlterEgoGS.S16#B3DB03' -Force
 
 The image in `build/` is a build artifact as well as the reference image, so replace it deliberately.
 
-## Release HDV (raw hard-disk image)
+## Release images: `.2mg` and `.po`
 
-The tracked deliverable is a **2IMG** file: a 64-byte `2IMG` header followed by the ProDOS blocks in
-ProDOS order (`format = 1`).  Emulators that mount a hard disk want the blocks alone, so
-`make:hdv` strips the header — nothing is converted:
+The **IIgs release is the `.2mg`** (`build/AlterEgo.2mg`, tracked): a 64-byte `2IMG` header followed
+by the ProDOS blocks in ProDOS order (`format = 1`).  An emulator that wants the bare volume instead
+takes the same blocks as a **`.po`** — `make:po` writes it and converts nothing:
 
 ```powershell
 cd iigs
-npm run make:hdv
+npm run make:po
 ```
 
 It prints, for the shipped image:
 
 ```
 image : C:\dev\alter-ego\iigs\build\AlterEgo.2mg (10485824 bytes, 2IMG header 64)
-hdv   : C:\dev\alter-ego\iigs\build\AlterEgo.hdv (10485760 bytes, 20480 ProDOS blocks, SHA256 ...)
+po    : C:\dev\alter-ego\iigs\build\AlterEgo.po (10485760 bytes, 20480 ProDOS blocks, SHA256 ...)
 ```
 
-- The result is the same 10 MB ProDOS 8 volume (`ALTEREGO`) the `.2mg` holds, so mount it as a
-  **ProDOS hard disk in slot 7** (`s7d1` in GSplus), not as a 3.5-inch floppy.  Verified by
-  pointing `s7d1` at the `.hdv`: title after about 12 s and Level 1 on the first Return
-  ("HELLO WORLD"), at `Limit: 16.0Mhz`.
-- Boot it on a **≥ 7.1 MHz** profile, ideally 16 MHz.  At the factory 2.8 MHz setting the port
-  falls back to its 2.8 MHz cadence (about 30 fps, 2–3 minute boot), which is playable but not
-  what the release documents — see "Speed baseline" above.
-- `build/AlterEgo.hdv` is generated and **not committed** (it is ignored by the `build/`
-  allowlist): the `.2mg` stays the source of truth, and the HDV is one `npm run make:hdv` away
-  from it.
+- The `.po` is the same 10 MB ProDOS 8 volume (`ALTEREGO`) the `.2mg` holds, so it boots exactly as
+  the `.2mg` does: verified by pointing GSplus `s7d1` at `build/AlterEgo.po` — title after about
+  12 s, Level 1 on the first Return ("HELLO WORLD"), at `Limit: 16.0Mhz`.
+- `HDV` is this same file under the Apple II / IIe hard-disk name; the IIgs release is `.2mg`/`.po`,
+  so no HDV is shipped here.
+- Boot at **≥ 7.1 MHz**, ideally 16 MHz.  At the factory 2.8 MHz setting the port falls back to its
+  2.8 MHz cadence (about 30 fps, 2–3 minute boot) — playable, but not what the release documents;
+  see "Speed baseline" above.
+- `build/AlterEgo.po` is generated and **not committed** (the `build/` allowlist tracks only the
+  `.2mg` and `AlterEgoGS`): the `.2mg` stays the source of truth, and the `.po` is one
+  `npm run make:po` away from it.
 
 ## Run in GSplus
 

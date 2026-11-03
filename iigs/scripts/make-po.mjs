@@ -1,14 +1,18 @@
 #!/usr/bin/env node
-// Derive a raw ProDOS hard-disk image (HDV) from the tracked boot image.
+// Derive a ProDOS-order raw image (.po) from the tracked boot image.
 //
 // The deliverable in build/ is a 2IMG file: a 64-byte 2IMG header followed by the ProDOS
-// blocks in ProDOS order (2IMG `format = 1`).  Emulators that mount a hard disk want the
-// blocks alone, so the HDV is the 2IMG file minus its header — no data is converted.
+// blocks in ProDOS order (2IMG `format = 1`).  A .po is those blocks and nothing else, so
+// the conversion strips the header — no data is converted and the block count does not
+// change (20480 blocks = 10 MB).
 //
 // The 2IMG stays the source of truth (it is what the build writes and what `npm run test`
-// boots); build/AlterEgo.hdv is generated and not committed.
+// boots); build/AlterEgo.po is generated and not committed.
 //
-// Usage: npm run make:hdv   (writes build/AlterEgo.hdv)
+// The same raw blocks are what Apple II/IIe hard-disk tooling calls an HDV — the file is
+// identical, only the name differs — but the IIgs release is shipped as .2mg/.po.
+//
+// Usage: npm run make:po   (writes build/AlterEgo.po)
 
 import { createHash } from 'node:crypto';
 import { readFileSync, writeFileSync } from 'node:fs';
@@ -18,10 +22,10 @@ import { fileURLToPath } from 'node:url';
 const ROOT = dirname(fileURLToPath(import.meta.url));
 const IIGS_ROOT = join(ROOT, '..');
 const TWO_IMG = join(IIGS_ROOT, 'build', 'AlterEgo.2mg');
-const HDV = join(IIGS_ROOT, 'build', 'AlterEgo.hdv');
+const PO = join(IIGS_ROOT, 'build', 'AlterEgo.po');
 
 function fail(message) {
-    console.error(`make-hdv: ${message}`);
+    console.error(`make-po: ${message}`);
     process.exit(1);
 }
 
@@ -39,7 +43,7 @@ if (headerSize < 64 || headerSize > image.length) {
 if (format !== 1) {
     // 0 = DOS 3.3 order, 2 = NIB.  A DOS-order 2IMG interleaves each 512-byte block's
     // halves, so stripping the header would not produce a ProDOS disk.
-    fail(`2IMG image format ${format} is not ProDOS order — cannot strip it into an HDV`);
+    fail(`2IMG image format ${format} is not ProDOS order — cannot strip it into a .po`);
 }
 
 const raw = image.subarray(headerSize);
@@ -54,7 +58,7 @@ if (raw.indexOf(Buffer.from('ALTEREGO')) < 0) {
     fail('the ProDOS volume name ALTEREGO is not in the block data — is this the Alter Ego image?');
 }
 
-writeFileSync(HDV, raw);
+writeFileSync(PO, raw);
 const sha256 = createHash('sha256').update(raw).digest('hex').toUpperCase();
 console.log(`image : ${TWO_IMG} (${image.length} bytes, 2IMG header ${headerSize})`);
-console.log(`hdv   : ${HDV} (${raw.length} bytes, ${rawBlocks} ProDOS blocks, SHA256 ${sha256})`);
+console.log(`po    : ${PO} (${raw.length} bytes, ${rawBlocks} ProDOS blocks, SHA256 ${sha256})`);

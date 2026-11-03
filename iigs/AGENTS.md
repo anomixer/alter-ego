@@ -64,37 +64,38 @@ rather than pleasant — and an accelerator in between (TransWarp GS, 7.1 MHz) s
 between the two: the renderer's per-frame cost is fixed, so smoothness scales roughly with the clock.
 `README.md` and `iigs/README.md` now say exactly that; no source or artifact changed.
 
-### Release HDV — the a2gsemu-ia artifact
+### Release images — `.2mg` for the IIgs release, `.po` on request
 
-The a2gsemu-ia release takes a **raw ProDOS HDV**, not the `.2mg`.  The `.2mg` in `build/` is a
-64-byte 2IMG header followed by the ProDOS blocks in ProDOS order (`format = 1`), so the HDV is that
-file minus the header — no conversion, no size change (10,485,760 bytes = 20,480 blocks).  New
-`npm run make:hdv` (`scripts/make-hdv.mjs`) writes **`build/AlterEgo.hdv`** and refuses anything that
-is not a 2IMG/ProDOS-order/whole-block image or that lacks the `ALTEREGO` volume name, so a bad
-image cannot be shipped silently.
+The IIgs release is the **`.2mg`** in `build/`.  Its payload is a 64-byte 2IMG header followed by the
+ProDOS blocks in ProDOS order (`format = 1`), so an emulator that wants the bare volume takes those
+same blocks as a **`.po`** — no conversion, no size change (10,485,760 bytes = 20,480 blocks).  New
+`npm run make:po` (`scripts/make-po.mjs`) writes **`build/AlterEgo.po`** and refuses anything that is
+not a 2IMG/ProDOS-order/whole-block image or that lacks the `ALTEREGO` volume name, so a bad image
+cannot be shipped silently.  An HDV is that same file under the Apple II / IIe hard-disk name; the
+IIgs release ships `.2mg`/`.po`, so no HDV is produced here.
 
-- Verified end to end: a throw-away kegs with only `s7d1`/`ssdir` changed boots the generated
-  `.hdv` in GSplus at `Limit: 16.0Mhz` — title after ~12 s, Level 1 ("HELLO WORLD") on the first
-  Return.  Screenshots: `iigs/tmp/hdv/shots/gsplus_screenshot_20261103_145117.png` (title) and
-  `..._145227.png` (Level 1).  The generated file hashes `8D2B5B36…`, the same as the image that
-  was booted, so what the script produces is what was tested.
-- Mount it as a **ProDOS hard disk in slot 7** (`s7d1`), not as a 3.5-inch floppy, and boot at
-  **≥ 7.1 MHz** (16 MHz is the release baseline): the disk is a 10 MB ProDOS 8 volume with System 6,
-  so it also boots at the factory 2.8 MHz setting, at the 2.8 MHz cadence (about 30 fps).
-- `build/AlterEgo.hdv` stays **generated and gitignored** — the `build/` allowlist tracks only
+- Verified end to end: a throw-away kegs with only `s7d1`/`ssdir` changed boots `build/AlterEgo.po`
+  in GSplus at `Limit: 16.0Mhz` — title after ~12 s, Level 1 ("HELLO WORLD") on the first Return.
+  Screenshots: `iigs/tmp/po/shots/gsplus_screenshot_20261103_172930.png` (title) and
+  `..._172937.png` (Level 1).  The generated file hashes `8D2B5B36…`, the same bytes the `.hdv` run
+  booted earlier, so the `.po` and the earlier hard-disk test are one image.
+- The `.po` is the 10 MB ProDOS 8 volume (`ALTEREGO`, `/ALTEREGO/AlterEgoGS.S16`) with System 6, so
+  mount it as a ProDOS disk and boot at **≥ 7.1 MHz** (16 MHz is the release baseline); at the
+  factory 2.8 MHz setting it still boots, at the 2.8 MHz cadence (about 30 fps).
+- `build/AlterEgo.po` stays **generated and gitignored** — the `build/` allowlist tracks only
   `AlterEgo.2mg` and `AlterEgoGS`.  The `.2mg` remains the source of truth (`npm run test` still
-  boots it), and the HDV is one `npm run make:hdv` away from it, so the two cannot drift.
+  boots it), and the `.po` is one `npm run make:po` away from it, so the two cannot drift.
 
 ### Files touched
 
 - `README.md`, `iigs/README.md` — speed/requirements wording (16 MHz baseline, 2.8 MHz playable,
-  accelerators in between) and the HDV recipe.
+  accelerators in between) and the `.po` recipe.
 - `iigs/CHANGES.md` — the day's entry.
-- `iigs/scripts/make-hdv.mjs`, `iigs/package.json` — `make:hdv`: derive + validate the raw HDV.
+- `iigs/scripts/make-po.mjs`, `iigs/package.json` — `make:po`: derive + validate the bare `.po`.
 - `iigs/docs/upstream-issues/compiled-sprites.md`, `tile-renderer.md` — the filed issue text (for the
   record, with its URL) and the unfiled tile-renderer draft.
 - No source, `prg.bin`, `AlterEgoGS` or `.2mg` change: the artifacts are byte-identical to 2026-11-01
-  (`AlterEgoGS` `88281425…`, `.2mg` `93A3004F…`, `prg.bin` `C4CB0445…`).  `build/AlterEgo.hdv` is
+  (`AlterEgoGS` `88281425…`, `.2mg` `93A3004F…`, `prg.bin` `C4CB0445…`).  `build/AlterEgo.po` is
   generated from the `.2mg` and not committed.
 
 ## 2026-11-02 — repository layout: root mirrors upstream, ports moved into subdirectories

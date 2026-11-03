@@ -16,11 +16,11 @@ Docs only; no source, `prg.bin`, `AlterEgoGS` or `.2mg` change (the artifacts ar
   (<https://github.com/lscharen/iigs-game-engine/issues/29>) and the decision not to re-base onto
   upstream `main` are recorded in `iigs/AGENTS.md`; the unfiled tile-renderer question is kept in
   `iigs/docs/upstream-issues/`.
-- `npm run make:hdv` (`iigs/scripts/make-hdv.mjs`) derives the raw ProDOS **`build/AlterEgo.hdv`**
+- `npm run make:po` (`iigs/scripts/make-po.mjs`) derives the bare ProDOS **`build/AlterEgo.po`**
   (20,480 blocks) from the tracked `.2mg` by stripping the 2IMG header, with header/format/volume
-  checks so a bad image cannot be shipped silently.  Verified booting that `.hdv` as an GSplus
-  hard disk (`s7d1`): title and Level 1 at `Limit: 16.0Mhz`.  The HDV is generated, not committed;
-  the `.2mg` remains the source of truth.
+  checks so a bad image cannot be shipped silently.  Verified booting that `.po` in GSplus: title
+  and Level 1 at `Limit: 16.0Mhz`.  The `.po` is generated, not committed; the `.2mg` is the IIgs
+  release and remains the source of truth.
 
 ## 2026-11-01 — Alter Ego for the Apple IIgs
 
