@@ -143,6 +143,35 @@ Copy-Item build\AlterEgoGS 'tmp\repackage\AlterEgoGS.S16#B3DB03' -Force
 
 The image in `build/` is a build artifact as well as the reference image, so replace it deliberately.
 
+## Release HDV (raw hard-disk image)
+
+The tracked deliverable is a **2IMG** file: a 64-byte `2IMG` header followed by the ProDOS blocks in
+ProDOS order (`format = 1`).  Emulators that mount a hard disk want the blocks alone, so
+`make:hdv` strips the header — nothing is converted:
+
+```powershell
+cd iigs
+npm run make:hdv
+```
+
+It prints, for the shipped image:
+
+```
+image : C:\dev\alter-ego\iigs\build\AlterEgo.2mg (10485824 bytes, 2IMG header 64)
+hdv   : C:\dev\alter-ego\iigs\build\AlterEgo.hdv (10485760 bytes, 20480 ProDOS blocks, SHA256 ...)
+```
+
+- The result is the same 10 MB ProDOS 8 volume (`ALTEREGO`) the `.2mg` holds, so mount it as a
+  **ProDOS hard disk in slot 7** (`s7d1` in GSplus), not as a 3.5-inch floppy.  Verified by
+  pointing `s7d1` at the `.hdv`: title after about 12 s and Level 1 on the first Return
+  ("HELLO WORLD"), at `Limit: 16.0Mhz`.
+- Boot it on a **≥ 7.1 MHz** profile, ideally 16 MHz.  At the factory 2.8 MHz setting the port
+  falls back to its 2.8 MHz cadence (about 30 fps, 2–3 minute boot), which is playable but not
+  what the release documents — see "Speed baseline" above.
+- `build/AlterEgo.hdv` is generated and **not committed** (it is ignored by the `build/`
+  allowlist): the `.2mg` stays the source of truth, and the HDV is one `npm run make:hdv` away
+  from it.
+
 ## Run in GSplus
 
 `emu/gsplus-alterego.kegs` has `s7d1` pointing at this checkout:

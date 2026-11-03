@@ -328,6 +328,9 @@ side supplies the screen, the palette pipeline and the audio mixing.
   original 16-frame animation cadence (about 30 fps), at the cost of a 2–3 minute boot.  An
   accelerator in between (a TransWarp GS at 7.1 MHz) sits proportionally between the two — the
   renderer's per-frame cost is fixed, so smoothness scales roughly with the clock.
+- **Hard-disk form:** `npm run make:hdv` in `iigs/` derives `iigs/build/AlterEgo.hdv` — the same
+  10 MB ProDOS 8 volume (20480 blocks) with the 2IMG header stripped — for emulators that mount an
+  HDV (GSplus `s7d1`, as a ProDOS hard disk in slot 7).  It is generated, not committed.
 - **NES program:** `iigs/src/games/alterego/prg.bin` must stay exactly 32,768 bytes.  The shipped
   file is reproduced byte for byte from the objects kept in [`iigs/prg-src/`](iigs/prg-src/README.md)
   (SHA256 `C4CB0445…`), so a PRG change is rebuilt there with cc65 and relinked before the Merlin

@@ -19,6 +19,7 @@
                     "kegs":  "%npm_package_config_kegscyrene%",
                     "cr":  "%npm_package_config_crossrunner%",
                     "test":  "node scripts/test-alterego.mjs",
+                    "make:hdv":  "node scripts/make-hdv.mjs",
                     "run":  "npm run build-image \u0026\u0026 %npm_package_config_gsport%",
                     "build:all":  "npm run build:smb \u0026\u0026 npm run build:bf \u0026\u0026 npm run build:wump \u0026\u0026 npm run build:lo \u0026\u0026 npm run build:ic \u0026\u0026 npm run build:eb \u0026\u0026 npm run build:dk \u0026\u0026 npm run build:mb \u0026\u0026 npm run build:zelda \u0026\u0026 npm run build:contra",
                     "build:smb":  "node ./src/games/smb/build.js",
