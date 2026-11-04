@@ -4,6 +4,141 @@ Newest first.  One entry per day of work, so the list lines up with the git hist
 on a given day appears in that day's entry.  Below this port's own entries are the silky-gs engine
 releases it came from.
 
+## 2026-11-04e — released: tag `iigs-v0.0.2`
+
+The port is published: tag **`iigs-v0.0.2`**,
+<https://github.com/anomixer/alter-ego/releases/tag/iigs-v0.0.2>, with the two disks below as release
+assets.  Both are the tracked files in `build/`, byte for byte — nothing was repacked for the release.
+
+| Asset | Bytes | SHA256 | What it is |
+|---|---|---|---|
+| `AlterEgo.2mg` | 819,264 | `4115CB7F…` | the 800 KiB GS/OS boot disk, game as `/SYSTEM/START`, no Finder; Q → Y ends the game on the exit screen |
+| `AlterEgo-full.2mg` | 3,670,080 | `3D7EA71E…` | the full System 6 volume, `/ALTEREGO/AlterEgoGS.S16`, Finder desktop; Q → Y returns to the Finder |
+
+Before publishing, both disks were opened with Cadius and their programs hashed: `/SYSTEM/START` is
+316,161 B `505F861B…` (the `--exitscreen` build) and `/ALTEREGO/AlterEgoGS.S16` is 313,376 B
+`0F24BDE5…` (the default build, the same bytes as `build/AlterEgoGS`), so each disk carries the
+behaviour it should.  The `.po` is **not** a release asset (`npm run make:po` remains a local
+convenience); the release is the two `.2mg` images.
+
+`npm run test` on the committed boot disk: PASS, title after 5.5 s, Level 1 after 2.3 s, same pixel
+signatures as before, and the image was byte-identical before and after the run (`4115CB7F…`).
+
+One thing to watch: the image GSplus had been playing had `ae.prefs` written into it by the guest
+(`Free : 494`, `File : 16`, SHA256 `7A4DAA00…`), so the tracked copy was restored with `git checkout`
+before it was published — a *played* disk is not the shipped disk.
+
+## 2026-11-04d — Q on the 800 KiB boot disk: a real exit screen
+
+**Q → Y** on the boot disk now ends the game for good and leaves a screen that says so, instead of
+restarting it.  The user asked for a meaningful exit rather than the Win95 "now you can turn off your
+computer" shrug, so the screen tells the truth: nothing on this disk can bring the game back, and the
+reset button is the only way out.
+
+```
+ALTER EGO HAS EXITED
+PRESS RESET TO PLAY AGAIN
+THANKS FOR PLAYING
+IT IS SAFE TO TURN OFF
+```
+
+- The screen is a 320×200 **Super Hi-Res bitmap** rendered at build time from the game's own NES CHR
+  font (`scripts/make-quit-screen.mjs` → `QuitScreen.s`), so it looks like part of the game: white on
+  black, the game's bold glyphs.  `QuitToExitScreen` (`Main.s`) saves the preferences, shuts the
+  runtime down, loads palette 0 as black/white, zeroes the SCB bytes, copies four bands of text rows
+  (5,120 bytes — the full picture does not fit in the tile-data bank, and an S16 file must keep its
+  eight segments) and halts.  `build.js --exitscreen` builds it, and `npm run make:boot` packs that
+  copy as `/SYSTEM/START`.
+- A **40-column text screen** came first and was abandoned after measuring it: the legacy display does
+  come up and the page does get written, but the video generator reads that page with an offset and a
+  stride that do not match a plain 40×24 Apple II page (rows permuted, shifted ~6 columns left and ~2
+  rows up), and neither `$C00C`, a fresh `$C029`, shadow off, both banks filled, nor zeroed
+  `$C04A-$C04D` changed it.  The pixel order of the Super Hi-Res word was not guessed either: a
+  throw-away build rendered four candidate orders, one per row, and only one read as text.
+- Verified with a dev build that quits at start-up (`--autotest`, no key press needed): the screen
+  renders exactly as above and stays up.  `npm run test` on the shipped image still passes (title
+  after 9.8 s, Level 1 after 2.3 s).  And the real key path is confirmed by the user, who pressed
+  Q → Y in GSplus on `build/AlterEgo.2mg` and got the exit screen (the harness's `q` does not reach
+  GSplus here, so that press could not be automated).
+- Artifacts: `build/AlterEgo.2mg` `4115CB7F…` (819,264 B, 1,600 blocks, 495 free);
+  `build/AlterEgoGS` unchanged (`0F24BDE5…`, the default build reproduces byte for byte);
+  `build/AlterEgoGS.exit` `505F861B…` (local); `build/AlterEgo-full.2mg` unchanged.
+- Removed the abandoned experiment (`Bye8.s`, `dist/BYE8`, `scripts/make-bye8.mjs`), updated
+  `.gitignore` (`QuitScreen.s` is generated), and the boot disk's `README.TXT` now says Q ends the game
+  and only the reset button starts it again.
+
+## 2026-11-04c — Q on the 800 KiB boot disk restarts the game
+
+On the 800 KiB disk there is no Finder, so **Q → Y** handed the machine back to GS/OS with no next
+application to run: it stopped on `Can't run next application. Error=$1E06` and sat on that screen.
+Q now does what the disk can do: it saves the preferences and restarts the game.
+
+- One source tree, **two builds**.  `build.js` writes the generated `QuitMode.s` and `Main.s`
+  assembles `quit` from it: the default build shuts down and calls `_QuitGS` (the full System 6
+  volume, back to the Finder), `build.js --boot` saves the preferences and restarts (the boot disk,
+  which has no shell).  `npm run make:boot` builds the boot-disk copy itself
+  (`build/AlterEgoGS.boot`, local and gitignored) and packs it, so the image cannot be built from a
+  copy that quits.  `npm run build:alterego` still publishes the full-volume application as
+  `build/AlterEgoGS`.
+- Asking GS/OS whether the volume has a Finder was tried first and abandoned: from the game, and
+  from the start-up of a program the Finder launched, `_OpenGS` failed for every candidate
+  (`1/…`, `2/…`, root-relative, by volume name) even though `/SYSTEM/FINDER` is there.  On the boot
+  disk the same call *does* work at start-up — `1/README.TXT` resolves, which is how prefix 1 turned
+  out to be the boot volume's root — so what fails is knowing the path, not making the call.  A
+  build switch cannot guess wrong.
+- Verified in GSplus at `Limit: 16.0Mhz`: on `build/AlterEgo.2mg`, Q then Y returns to the title and
+  the game continues (no `$1E06` screen); on a full System 6 volume with the game installed, Q then
+  Y hands control back to GS/OS and it runs its start application again (no stop).  `npm run test`
+  passes (title after 9.8 s, Level 1 after 2.3 s).
+- `npm run test` now boots a **scratch copy** of `build/AlterEgo.2mg` in `tmp/test/` (with `s7d1`
+  rewritten) instead of the shipped file, and a run leaves it byte for byte unchanged.
+- The key sheet on the disk (`dist/README.TXT`) spells out both cases — on this disk EXIT GAME and
+  Q (then Y) return to the title, on a full System 6 disk Q (then Y) quits to the Finder — and the
+  image was repacked after the edit (`npm run test` still passes, 9.9 s / 2.3 s).
+
+## 2026-11-04b — release boot disk is 800 KiB (`npm run make:boot`)
+
+The release `.2mg` is now **819,264 bytes** (a 64-byte 2IMG header plus 1,600 blocks = 800 KiB)
+instead of 3.5 MB: ProDOS 8, the minimal GS/OS 6 boot set and the game — no Finder, no desktop,
+boot straight into the game.
+
+- `build/AlterEgo.2mg` is generated by `npm run make:boot` (`iigs/scripts/make-boot-2mg.mjs`): it
+  copies `iigs/dist/GSBoot.2mg` (the silky-gs distribution's minimal boot disk, made by that
+  repository's `scripts/make-boot-disk.js`), renames the volume to `ALTEREGO`, adds the application as
+  `/SYSTEM/START` (S16 `$DB03`, 613 blocks) and `iigs/dist/README.TXT` at the root as a `$B0` ProDOS
+  text file.  GS/OS launches `/SYSTEM/START` at boot, and that file is the game.
+- Building a minimal boot set by deleting files from the 3.5 MB volume does **not** work: the boot
+  stops with error `$0046` "while loading the start PSI file".  The template is a boot set that is
+  known to boot — every silky-gs game is distributed exactly this way.
+- Verified: `npm run test` passes on the 800 KiB disk (title after 9.9 s, Level 1 after 2.3 s, same
+  pixel signatures); GSplus reaches the title and Level 1 at `Limit: 16.0Mhz`; `cadius CATALOG` shows
+  1,600 blocks, 15 files, 500 free, and `CHECKVOLUME` is clean.
+- The 3.5 MB System 6 volume stays as **`build/AlterEgo-full.2mg`** (Finder desktop, game at
+  `/ALTEREGO/AlterEgoGS.S16`), so both forms ship; `npm run trim` now defaults to it.  `npm run
+  make:po` follows `build/AlterEgo.2mg`, so the `.po` is now 819,200 bytes (1,600 blocks).
+- `iigs/README.md` and the root `README.md` describe both images; the boot disk's key sheet is
+  `iigs/dist/README.TXT`.
+
+## 2026-11-04 — boot image trimmed from 10 MB to 3.5 MB
+
+The shipped `.2mg` carried the same System 6 volume the port had always used: 20,480 blocks
+(10,485,824 bytes), of which only 6,439 were allocated.  It is now **7,168 blocks**
+(3,670,080 bytes) — the smallest 0.5 MiB multiple that still holds every file.
+
+- `npm run trim` (`iigs/scripts/trim-2mg.mjs`) rewrites the volume in place instead of repacking it:
+  it walks the volume directory chain to find the allocation bitmap, reads the highest allocated
+  block, then patches the volume header's total-blocks word, the bitmap bits past the new end and
+  the 2IMG block count/data size, and truncates.  File data, directory entries, resource forks and
+  GS/OS extended entries are untouched, so the files are the same files.
+- The bitmap is ProDOS 8's (0 bit = in use), one bitmap block per 4,096 blocks: the smaller volume
+  needs two, so the three blocks the old bitmap used (8-10) stay allocated; `cadius CHECKVOLUME`
+  reports exactly those three as "in use but not referenced" and nothing else.
+- Verified: `npm run test` passes on the trimmed image (title after 12.2 s, Level 1 after 2.3 s,
+  same pixel signatures), `cadius CATALOG` still lists 185 files and 11 directories with 729 blocks
+  free, and re-running the script is a no-op.
+- `npm run make:po` now derives the matching 3,670,016-byte `.po`; `iigs/README.md` and the root
+  `README.md` quote the new size.
+
 ## 2026-11-03 — speed guidance for release: 16 MHz baseline
 
 Docs only; no source, `prg.bin`, `AlterEgoGS` or `.2mg` change (the artifacts are byte-identical to
@@ -13,8 +148,9 @@ Docs only; no source, `prg.bin`, `AlterEgoGS` or `.2mg` change (the artifacts ar
   **2.8 MHz** setting playable (about 30 fps gameplay, 2–3 minute boot) and an accelerator in between
   (a TransWarp GS at 7.1 MHz) scaling with the clock.
 - Upstream triage of Lucas Scharenbroich's five suggestions, the filed silky-gs issue
-  (<https://github.com/lscharen/iigs-game-engine/issues/29>) and the decision not to re-base onto
-  upstream `main` are recorded in `iigs/AGENTS.md`; the unfiled tile-renderer question is kept in
+  (<https://github.com/lscharen/silky-gs/issues/46>, refiled from `iigs-game-engine` issue 29 after its
+  owner closed that as the wrong repository) and the decision not to re-base onto upstream `main` are
+  recorded in `iigs/AGENTS.md`; the unfiled tile-renderer question is kept in
   `iigs/docs/upstream-issues/`.
 - `npm run make:po` (`iigs/scripts/make-po.mjs`) derives the bare ProDOS **`build/AlterEgo.po`**
   (20,480 blocks) from the tracked `.2mg` by stripping the 2IMG header, with header/format/volume
@@ -164,7 +300,7 @@ the source tree, the archived `//e` tree, the repository rename and the two-targ
   | `@` | Show / hide the sprites |
   | `#` | Show / hide the background |
   | `R` | Reset the game (like the NES console's RESET button) |
-  | `Q` | Quit, after a confirmation screen (Y quits, N or Escape goes back) |
+  | `Q` | Quit, after a confirmation screen (Y quits, N or Escape goes back). On the 800 KiB boot disk, which has no Finder, Y saves the preferences and restarts the game instead of quitting (see 2026-11-04c) |
 
 - A key set as a controller key now works as the controller, not as a built-in key (`?` always opens
   the configuration screen).

@@ -21,7 +21,8 @@
 //     with `src/nes.cfg`.
 //
 // Usage: node build-rom.mjs [--from <file.nes>] [--out <file>]
-// Environment: CC65_BIN overrides the cc65 bin directory.
+// Environment: CC65_BIN overrides the cc65 bin directory; CC65_LIB names the
+// installed `nes.lib` (the Linux/macOS packages keep it outside `bin/`).
 
 import { readFileSync, writeFileSync, mkdirSync, existsSync } from "node:fs";
 import { createHash } from "node:crypto";
@@ -59,6 +60,24 @@ function tool(dir, name) {
   return exe ?? name;
 }
 
+// `src/nes.lib` is the historical library and ld65 V2.19 rejects it ("Wrong data
+// version"), so the library installed with cc65 is preferred.  On Windows it sits
+// next to `bin/`; the Linux and macOS packages keep it elsewhere
+// (/usr/share/cc65/lib, /opt/homebrew/share/cc65/lib, …), and CI names it with
+// CC65_LIB because the package layout is not guaranteed.
+function nesLib(bin) {
+  const candidates = [
+    process.env.CC65_LIB,
+    bin ? join(bin, "..", "lib", "nes.lib") : null,
+    "/usr/share/cc65/lib/nes.lib",
+    "/usr/local/share/cc65/lib/nes.lib",
+    "/usr/lib/cc65/lib/nes.lib",
+    "/opt/homebrew/share/cc65/lib/nes.lib",
+    "/usr/local/opt/cc65/lib/nes.lib",
+  ].filter(Boolean);
+  return candidates.find((p) => existsSync(p)) ?? join(repo, "src", "nes.lib");
+}
+
 function run(bin, name, args) {
   const cmd = tool(bin, name);
   const res = spawnSync(cmd, args, { cwd: repo, encoding: "utf8" });
@@ -82,11 +101,8 @@ function compileFromSource() {
   run(bin, "ca65", ["src/neslib.s", "--include-dir", "./src", "-o", join(work, "neslib.o")]);
   run(bin, "ca65", [join(work, "game.s"), "-o", join(work, "game.o")]);
 
-  // src/nes.lib is the historical library (wrong data version for V2.19), so
-  // use the one installed next to cc65 when it exists.
-  const installedLib = bin ? join(bin, "..", "lib", "nes.lib") : null;
-  const lib = installedLib && existsSync(installedLib) ? installedLib : join(repo, "src", "nes.lib");
-  console.log(`library: ${lib}`);
+  const lib = nesLib(bin);
+  console.log(`library: ${lib}${lib.startsWith(repo) ? " (repository copy, ld65 may reject it)" : ""}`);
 
   run(bin, "ld65", [
     "-C", join(here, "nes-cc65-2.19.cfg"),

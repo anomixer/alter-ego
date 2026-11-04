@@ -3,7 +3,649 @@
 This file is the working log and hand-off for the **Apple IIgs (silky-gs)** port. It supersedes the
 archived `//e` notes in `vera/docs/archive/apple2e/`. Dates are Asia/Taipei.
 
-## 2026-11-03 — upstream triage (Lucas), silky-gs issue 29, 16 MHz release baseline
+## 2026-11-04i — the mark: ALTER orange, EGO blue, one copy of each word
+
+「1. 右邊EGO變黃了?  原來不是偏藍色嗎? 2. ALTER只要上面的這5個英文字就好, 不用倒影, EGO也是一樣」,
+then 「ALTER原本是偏橘黃色, 結果變藍色 (看來上一輪你把ALTER和EGO的顏色對掉了XD)」.  Both are right,
+and both come from the same fact: the title draws each word **twice**, in two different ramps.
+
+### What the title screen actually draws
+
+Measured in jsnes at frame 420, and identical at frames 250-3000 (so the title art is static, there is
+no colour cycling to chase):
+
+| what | where | shades | px |
+|---|---|---|---|
+| ALTER, bright copy | x 25..142, y 56..94 | `0,25,188` / `0,180,247` / `136,237,248` | 1,745 |
+| ALTER, dim copy | x 9..165, y 96..118 | `255,64,0` / `180,0,0` / `255,171,60` / `255,242,190` | 1,610 |
+| EGO, bright copy | x 160..230, y 96..134 | `255,64,0` / `255,171,60` / `255,242,190` | 1,389 |
+| EGO, dim copy | x 161..230, y 72..94 | `0,0,95` / `0,25,188` / `71,109,255` | 849 |
+
+- Every attribute bit on the title's background tiles is 0, so all of them use BG group 0 =
+  `{0x0f, 0x01, 0x11, 0x21}` (`palTitleBG`, `src/palettes.h`) — the **blue** ramp.  So the background
+  letters are blue and the orange ones are the sprite layer: on the NES, ALTER is blue and EGO orange,
+  and each word's dim copy is the 倒影 (dimmer, one word-height away: under ALTER, above EGO).
+- The IIgs port's title shows the same art with the two ramps exchanged — ALTER letters `255,0,0` /
+  `255,170,68` / `255,255,119` (the orange ramp), EGO letters `119,187,255` — measured on
+  `docs/screenshots/shot_title_current.png`.  That is the look the user remembers; it is a
+  title-screen palette mismatch on the port, not what the NES ROM does, and it is **not** touched here.
+
+### The recolour
+
+`web/nes/make-logo.mjs` now keeps **one copy per word** — ALTER from the background copy, EGO from the
+sprite copy — and drops the other copy plus the 1-4 px stars (components under 16 px).  Each word's
+shades are mapped by rank onto the other word's ramp, so ALTER comes out `255,64,0` / `255,171,60` /
+`255,242,190` and EGO `0,25,188` / `0,180,247` / `136,237,248`.  Placement is untouched, so the two
+words keep their title-screen geometry; the crop was **206×79** (one column narrower, ALTER's bbox) —
+see the follow-up below for the single line.
+
+### Verified
+
+- `node web/nes/make-logo.mjs --report`: ALTER 1,644 px kept (101 px of stars dropped), bbox
+  `x 25..142 y 56..94`; EGO 1,353 px kept (36 dropped), bbox `x 160..230 y 96..134`; asset 206×79,
+  2,997 opaque px, 1,234 B, SHA256 `614c0910106c21783c9943fca1a048c0ebd0f9adb88f615ebdc574d9d6d105e1`.
+- `web/index.html` sizes it `min(412px, 84vw)` = 2× 206 with `width`/`height` 206×79.
+- Deploy run `41805598074` (`de59715`): build and deploy **success**, every step green.
+- Live: `/index.html` 200 (3,689 B) carrying the logo reference and the `min(412px` rule; the asset
+  200, 1,234 B, byte-identical to the committed file (same hash above); the live screenshot at
+  1100×940 is byte-identical to the local one — ALTER orange/amber, EGO blue, nothing under or over
+  either word.
+
+### Follow-up — one line (同一行)
+
+「把logo放在同一行吧! 不用左上右下」.  The mark is now a single line: `make-logo.mjs` moves every word
+up to the block's top row (both are five tile rows tall, so they share a baseline as well) and leaves
+the columns alone, so the 17 px between the words is still the title's own spacing.  EGO shifts by
+dy −40; the crop goes **206×79 → 206×39** with the same 2,997 pixels, 1,135 B, SHA256
+`d534513981fd0394ccb8fd060b20967fab45cf7204da406726791ea4e0c5cf48`.  `web/index.html` carries
+206×39 (and `h1` margin 12 px).
+
+Deploy run `41810062823` (`2516b9e`): success; live `/index.html` 200 (3,689 B) with `height="39"`,
+the asset 200 / 1,135 B and byte-identical to the committed file, and the live screenshot at 1100×900
+byte-identical to the local one — ALTER left in orange, EGO right in blue, one line.
+
+The docs commit after it (`19122bc`) touched `web/nes/README.md`, i.e. a path the workflow's `paths`
+filter covers (`web/**`), yet GitHub created **no** run for that push — a transient, not a filter
+problem: dispatching the same workflow by hand worked at once.  So that head was deployed with
+`workflow_dispatch`, run `41811270854` (`19122bc`), **success** with every step green, and the live
+page and asset re-checked afterwards: still 1,135 B / `d5345139…`, page 200 (3,689 B) with
+`height="39"` / `width="206"`.
+
+### Trap — one `Set-Content` rewrite ate five characters
+
+`web/index.html` was rewritten through PowerShell's `Set-Content` when the mark was recoloured
+(`de59715`), and that round-trip turned every character it could not map into a literal `??`: the
+`<title>`'s em dash, the subtitle's em dash, and all three `👉` in the card headings.  Nothing failed
+— the page just rendered `?? PLAY HERE`, which the 1100×900 screenshots show.  Restored in the next
+commit: the file is UTF-8 again (3,699 B, `—` / `👉` / `·`), and `git diff de59715 HEAD -- web/index.html`
+is exactly those five lines.
+
+Reading the tree back with Windows PowerShell 5.1 makes this look worse than it is: `Get-Content`
+decodes UTF-8 as ANSI, so *every* `—`, `←`, `→`, `…` prints as `?` and the file looks riddled with
+`??`.  Check encoding with `node -e "readFileSync(...,'utf8')"` (or the `edit` tool), never with a
+PowerShell read-modify-write.
+
+Fixed in `b8efb1f`; deploy run `41812352855` (that push, so the earlier "no run" really was a one-off)
+built and deployed **success**, and the live page is now 3,699 B with zero `??`: `height="39"` /
+`width="206"`, both em dashes and three `👉`, the asset 200 / 1,135 B / `d5345139…`, and the live
+1100×900 screenshot byte-identical to the local one.
+
+### The //e VERA player moved to the Pages build of Apple2TS
+
+「先幫我 iivera 版本 改成 <https://anomixer.github.io/apple2ts/...> (上游把iivera display修壞了 orz)」.
+All three links that open the Apple //e + VERA port now use **`https://anomixer.github.io/apple2ts/`**
+with the same `?slot2=vera&tab=vera#<raw hdv>` tail, instead of `apple2ts.com`: `README.md` (the PLAY
+HERE table), `web/index.html` (the card) and `web/nes/index.html` (the header pill).
+
+Checked that the new target actually plays, not only that it answers:
+
+- the Pages build is Apple2TS itself (2,227 B page, `assets/index-CLRNaERo.js`, which still parses
+  `slot2` / `tab=` / `location.hash`), and `apple2ts.com` was not touched;
+- the raw `.hdv` is 819,200 B and byte-identical to the committed `vera/build/alter-ego-vera.hdv`;
+- the exact link, driven in headless Chrome over CDP in **real** time (not virtual time), boots the disk
+  into slot 7 drive 1 and the **VERA display** pane shows the port's title menu — ALTER EGO with
+  `START GAME` / `START LEVEL 01` / `MUSIC ON` / `SOUND ON`, i.e. the display that upstream broke works
+  here. Capture: `web/nes/build/shots/a2ts-01-boot.png` (scratch, gitignored).
+
+Windows note: on this machine `Invoke-WebRequest` and Node's `fetch` against `anomixer.github.io`
+sometimes fail with `ERR_CONNECTION_RESET` / `ECONNRESET` while `curl.exe` and Chrome get 200 every
+time — a local network quirk, not the host rejecting the request.
+
+Deployed in `ee49fac` (deploy run `41837661445`), **success**; live `/index.html` (3,714 B) and
+`/nes/index.html` (8,612 B) each carry exactly one `anomixer.github.io/apple2ts/` link and no trace of
+`apple2ts.com`.
+
+### Files touched
+
+- `web/nes/make-logo.mjs` (word-by-word extraction, ramp mapping, `--report`), `web/assets/alter-ego-logo.png`,
+  `web/index.html` (206/412 px), `web/nes/README.md` (the paragraph now describes the two copies),
+  the 2026-11-04h claim about "no reflection" corrected, this entry.
+
+## 2026-11-04h — the landing page's heading is the game's own title mark
+
+「就 github pages 首頁 ALTER EGO, 看能否用 NES畫面那個 ALTER EGO logo (不用倒影)」 — so the Pages root
+(`web/index.html`) no longer sets the title in Segoe UI; it shows the mark from the NES title screen.
+
+### Where the mark comes from — cut out of a real frame, not redrawn
+
+`web/nes/make-logo.mjs` boots `build/alterego.nes` in jsnes, runs to frame 420 (the title), and keeps
+only what is big enough to be a letter:
+
+- the title's stars are 1-4 px components, so 4-neighbour components under 16 px are dropped
+  (243 px of stars in that frame); the letters are 200+ px each.
+- the mark is rows **56..134** and columns **24..230** → a **207×79** crop; "PRESS START" (rows 178..190)
+  and the credits text are outside the band `40..170`, so neither can leak in.
+- black becomes transparent (`writePngRgba`, colour type 6, added to `png.mjs`), so the letters sit on
+  the page's `#0b0b10` instead of on a black rectangle: 5,210 opaque px, 11,143 transparent.
+
+**There *is* a second copy of each word, and that is what the user calls 倒影.**  The first version of
+this entry claimed the title had nothing to leave out, which was wrong: each word is drawn twice, a
+bright copy and a dimmer copy one word-height away (under ALTER's letters, above EGO's), plus the
+scattered stars.  The correction and the recolour are in 2026-11-04i below.
+
+### On the page
+
+`h1` holds the image at `min(414px, 84vw)` — 414 is exactly 2× the 207 px art, so with
+`image-rendering: pixelated` every source pixel gets the same size on screen (and it is 4× at DPR 2);
+`width`/`height` attributes carry the 207:79 ratio so nothing shifts while it loads.  `build-site.mjs`
+copies `assets/` too, and its local-reference check covers the new `src`.
+
+### Verified
+
+- Local: `node web/nes/make-logo.mjs` → `frame 420: 366 components, kept 123 (dropped 243 px of stars)`,
+  box `x 24..230, y 56..134`, 1,668 B PNG; screenshot of the assembled site at 1100×940 shows the mark
+  above the three cards, no black box, no stars.
+- Deploy run `41801436511` (`04a0df3`): build and deploy **success**, every step green.
+- Live: `/index.html` 200 (3,699 B) with the `assets/alter-ego-logo.png` reference, the asset 200
+  `image/png` 1,668 B and byte-identical to the committed file
+  (`316db4838d6cb0fd35ff406b4a9a58aa6438e7e162a12fd19dd12a57f9ed731f`); the live screenshot is
+  pixel-identical to the local one.
+
+### Trap
+
+Windows locks the cwd, so a `python -m http.server` started **inside** `web/_site` makes
+`build-site.mjs`'s `rmSync` fail with `EPERM`; serve with `--directory` from another directory (or stop
+the server) before rebuilding.
+
+### Files touched
+
+- `web/index.html` (h1 → image, `h1 img` CSS), `web/assets/alter-ego-logo.png` (new, committed),
+  `web/nes/make-logo.mjs` (new), `web/nes/png.mjs` (`writePngRgba`), `web/build-site.mjs` (`assets/` in
+  the manifest), `web/nes/README.md` (how the mark is made), this entry.
+
+## 2026-11-04g — player header: bigger title, port links at the top right
+
+Two changes to `web/nes/index.html`, both from the user's read of the deployed page:
+
+- **The title was too small** (18 px, centred).  `h1` is now `clamp(26px, 4.2vw, 36px)` — 36 px at the
+  768 px stage width — with the left-aligned brand block plus the "jsnes 2.1.0" subtitle.
+- **The header had no way back to the other ports.**  It is now a flex row exactly as wide as the
+  emulator stage (`min(768px, 100%)`), with, at its right edge in this order: the **Apple II VERA** port
+  (Apple2TS, raw `vera/build/alter-ego-vera.hdv`), the **Apple IIgs** port (a2gsemu-ia,
+  `?game=<repo>`), and a **GitHub mark** linking <https://github.com/anomixer/alter-ego>.  The links
+  are pill-shaped, 30 px tall; the header is the stage's width, so nothing runs out past the emulator's
+  right border, and it wraps below the title when the window is narrow.
+
+### Verified
+
+- Measured in headless Chrome (1000×1000) on **both** the local site and the deployed one: title
+  `36px`, stage spans `107..877`, the nav spans `629..876` and `fitsStage` is true — the GitHub icon
+  ends 1 px inside the stage's right border.
+- The deployed page still plays: after the click the status line reads
+  `ROM build/alterego.nes (embedded) · 40,976 bytes · Sound: 90% (44100 Hz→48000 Hz)`, the canvas is
+  256×240, and Space reaches the title (non-black **5459**, the `test.mjs` signature).
+- The three link targets answer 200: a2gsemu-ia, Apple2TS, and the raw VERA `.hdv` behind it (plus the
+  repository page).
+- Deploy run `41798982225` (`head 2a556a5`): build and deploy **success**; the live
+  `/nes/index.html` serves 8,597 bytes with the new CSS and all three links.
+
+### Files touched
+
+- `web/nes/index.html` — header markup/CSS (`header`, `.brand`, `.ports`, `h1` clamp, GitHub SVG); the
+  footer now says the ROM is compiled "when this site is built" instead of "locally".
+- `web/nes/README.md` — the header and its three links described; this entry.
+
+## 2026-11-04f — Play in a browser: PLAY HERE links and the NES player on GitHub Pages
+
+The root `README.md` now has the three "PLAY HERE" links the user asked for (the freegemas layout):
+the jsnes page at <https://anomixer.github.io/alter-ego/nes/index.html>, the IIgs port through
+a2gsemu-ia (`?game=<repo url>`, so it boots the released `AlterEgo.2mg`), and the VERA port through
+Apple2TS (raw `vera/build/alter-ego-vera.hdv`).  The table sits right under the repository table, and
+`## Play the NES original in a browser` repeats the NES link.
+
+### The NES page is deployed, not just local
+
+`web/nes/` used to be a local page only.  It is now published, on the URL the user named:
+
+| URL | What it is |
+|---|---|
+| <https://anomixer.github.io/alter-ego/> | `web/index.html`, one card per target |
+| <https://anomixer.github.io/alter-ego/nes/index.html> | the player |
+
+- [`.github/workflows/deploy-web.yml`](../../.github/workflows/deploy-web.yml) — runs on a push that
+  touches `src/**`, `web/**` or itself, and on `workflow_dispatch`.  It installs cc65 from apt, runs
+  `web/nes/build-rom.mjs` (compiles `src/`; **no ROM is committed**), then `web/nes/test.mjs`, which
+  pixel-checks title and Level 1 — so a ROM that does not reach the title fails the deploy instead of
+  being published — assembles `web/_site` and deploys it with `actions/deploy-pages@v4`.
+- `web/build-site.mjs` — assembles `web/_site` from the tracked page files plus the generated
+  `build/alterego.nes` and `build/rom-base64.js`, and fails when an HTML local reference is missing.
+  `web/_site` is gitignored (`web/.gitignore`).
+- `web/index.html` — the Pages root.
+- `web/nes/build-rom.mjs` — gained `CC65_LIB` and the usual Linux/macOS library locations: the cc65
+  package keeps `nes.lib` outside `bin/` (`/usr/share/cc65/lib/nes.lib`), and the workflow names it
+  with `find /usr -name nes.lib -path '*cc65*'`.  Windows behaviour is unchanged (it still links
+  `C:\dev\cc65\lib\nes.lib`).
+
+### Verified end to end
+
+- Local: `node web/nes/build-rom.mjs` → 40,976 B (32 KB PRG + 8 KB CHR, mapper 0, SHA256
+  `D05E814E…`); `node web/nes/test.mjs` → **PASS** (title 252 frames, Level 1 92); `node
+  web/build-site.mjs` → 8 files / 257,023 B.
+- GitHub Actions run `41796726854` (`2026-11-04T08:04:35Z`): build job and deploy job both
+  **success**, every step green, first try.
+- Live: `/`, `/nes/index.html`, `/nes/build/rom-base64.js`, `/nes/build/alterego.nes` and
+  `/nes/vendor/jsnes.min.js` all answer **200** with the expected sizes.
+- Live, in Chrome (headless, real time, clicked the page): the status line reads
+  `ROM build/alterego.nes (embedded) · 40,976 bytes · Sound: 90% (44100 Hz→48000 Hz)`, the canvas is
+  256×240, and Space lands on the title with **non-black 5459** — the exact signature `test.mjs`
+  asserts, so the published page plays the published ROM.
+- Pages was **already enabled** with `build_type = "workflow"` (the `POST /pages` answered 409), so
+  no repository setting had to change; the docs still say Settings → Pages → Source: GitHub Actions in
+  case it is ever turned off.
+
+### Traps
+
+- **The CI build is not byte-identical to a local one.**  The deployed `alterego.nes` hashes
+  `E75209A0…`, the local cc65 build `D05E814E…`; same 40,976 bytes and same shape, both pass the same
+  pixel test.  apt's cc65 differs slightly from `C:\dev\cc65` (2.19 as well), so the ROM hash is not
+  an identity test — the `test.mjs` signatures are.
+- **A click before `app.js` is ready is lost.**  The overlay's handler is attached at the end of
+  `app.js`; the status line still says `Loading…` until then.  A probe that clicks as soon as `#status`
+  exists does nothing and reports "no canvas" — wait for the status text to leave `Loading…`.
+- **No ROM in git.**  `Alter_Ego.nes` (the original v1.02 binary at the root) stays untracked;
+  `web/nes/build/` is generated.  The site is built from source on every deploy.
+
+### Files touched
+
+- `.github/workflows/deploy-web.yml`, `web/build-site.mjs`, `web/index.html`, `web/.gitignore` (new).
+- `web/nes/build-rom.mjs` (`CC65_LIB` / Linux library paths), `web/nes/README.md` (deployment section,
+  library note), `README.md` (PLAY HERE table, workflow in the pages table and the documentation
+  group), `iigs/README.md` (a2gsemu-ia link in the release section), this entry.
+
+## 2026-11-04e — first release: tag `iigs-v0.0.2`
+
+The port is published.  Tag **`iigs-v0.0.2`** on the 2026-11-04 commit, GitHub release
+<https://github.com/anomixer/alter-ego/releases/tag/iigs-v0.0.2>, two assets — the tracked files from
+`iigs/build/`, byte for byte, so nothing was repacked for the release:
+
+| Asset | Bytes | SHA256 | Disk |
+|---|---|---|---|
+| `AlterEgo.2mg` | 819,264 | `4115CB7FB6D1CA9B68F6C82BE6D428BBEBB27A4934382929128B89B78870C912` | 800 KiB GS/OS boot disk, `/SYSTEM/START`, no Finder; Q → Y ends the game on the exit screen |
+| `AlterEgo-full.2mg` | 3,670,080 | `3D7EA71E36ED892A7F77CE4D4F6381000D77E498F904CDD439DEACBE0308DCB0` | full System 6 volume, `/ALTEREGO/AlterEgoGS.S16`, Finder; Q → Y returns to the Finder |
+
+The only open decision left was the tag name, and the candidate recorded on 2026-11-03 —
+**`iigs-v0.0.2`** — is the one that shipped.  It is the engine snapshot's number rather than the
+port's own; `README.md` already explains that the engine is silky-gs v0.0.2 (`0c341d2`), so the name is
+consistent with the rest of the docs.
+
+### What each disk carries — checked before publishing
+
+Opened both images with Cadius and hashed the programs, instead of trusting the file names:
+
+- `AlterEgo.2mg` → `/ALTEREGO/System/Start` (Cadius wants the volume-qualified path; `/SYSTEM/START`
+  answers "Wrong volume name") = 316,161 B, SHA256 `505F861B…`, i.e. `build/AlterEgoGS.exit`, the
+  `--exitscreen` build.
+- `AlterEgo-full.2mg` → `/ALTEREGO/AlterEgoGS.S16` = 313,376 B, SHA256 `0F24BDE5…`, the default
+  (Finder) build, the same bytes as `build/AlterEgoGS`.  It is current: the whole image is unchanged
+  since 2026-11-04d, `3D7EA71E…`.
+
+The `.po` is **not** a release asset: 「留 2mg就好, po檔可以不用了」.  `npm run make:po` stays as a local
+convenience (`build/AlterEgo.po`, 819,200 B, `DDB3E9A5…`), and the docs now present the release as the
+two `.2mg` files.  `HDV` was never shipped.
+
+### Trap — the disk GSplus had been playing was not the shipped disk
+
+GSplus (the user's session, started 14:04) had `iigs/build/AlterEgo.2mg` open, and the guest had
+written `ae.prefs` (296 B) to the volume root: `Block : 1600  Free : 494  File : 16`, and the file
+hashed `7A4DAA00…` instead of the committed `4115CB7F…`.  `git status` showed it as modified, so it was
+restored with `git checkout -- iigs/build/AlterEgo.2mg` (no rebuild: the committed bytes are the
+shipped bytes) and the release asset is that restored file.  This is the 2026-11-04c trap in practice:
+`SavePrefData` writes to the disk the game ran from, so a *played* copy always differs from the packed
+one.  `npm run test` boots a scratch copy under `tmp/test/` and left the image byte-identical before
+and after the run.
+
+### Verified before publishing
+
+- `npm run test` on the committed `build/AlterEgo.2mg`: **PASS**, title after 5.5 s, Level 1 after
+  2.3 s, same pixel signatures (grey 24 / orange 3132 / teal 28 and grey 9192 / teal 4688 / orange
+  9260), image unchanged (`4115CB7F…` before and after).
+- The user played that disk in GSplus and confirmed Q → Y shows the exit screen (2026-11-04d), which
+  is the one manual step a harness cannot do here.
+- `git status` clean apart from the untracked `Alter_Ego.nes`.
+
+### Files touched
+
+- `iigs/README.md` — release section retitled and rewritten around `iigs-v0.0.2` and the two `.2mg`
+  assets; the `.po` is now explicitly "not part of the release"; free-block count corrected to 495.
+- `README.md` — a **Download** bullet with the tag link and both hashes; the boot-disk bullet's program
+  size corrected to 316,161 B and 495 free blocks; the `.po` bullet marked optional.
+- `iigs/CHANGES.md` (2026-11-04e), this entry.
+
+## 2026-11-04d — Q on the boot disk: a real exit screen, drawn in Super Hi-Res
+
+The user picked the one-way exit over the restart (「1 看看吧」), and rejected the "keep restarting" and
+"freeze on a black screen" alternatives — 「2,3 就跟win95 關機後顯示 "現在你可以關閉電腦"一樣啊XD 沒意義~」.
+So Q → Y on the 800 KiB boot disk now stops the game for good and leaves a screen that says so.
+
+### What the screen is
+
+A 320×200 Super Hi-Res bitmap, rendered at **build time** from the game's own NES CHR font, and copied
+to `$E1/2000` by the quit code:
+
+```
+ALTER EGO HAS EXITED
+PRESS RESET TO PLAY AGAIN
+THANKS FOR PLAYING
+IT IS SAFE TO TURN OFF
+```
+
+White on black, the game's bold font, so it looks like it belongs to the game. No glyph for `Q` or `W`
+exists in the font (`gen-credits.py`'s map: `A..P`, `R..V`, `X`, `Y`, `Z`, digits), hence "EXITED".
+
+`QuitToExitScreen` (`Main.s`) is: `NES_Pause`, `SavePrefData`, `NES_ShutDown`, then border black, palette
+0 = `$0000`/`$0FFF` (`$E19E00`, index 15 at `$E19E1E`), the 200 SCB bytes at `$E19D00` zeroed, the
+picture copied, and `bra`-halt. The display is still SHR at that point (`NES_ShutDown` restores the mode
+the game started in, `$C1`), so nothing has to be switched on.
+
+### Why not a 40-column text screen — measured, and abandoned
+
+That was tried first (a `Bye8` blob written to `$2000` and `jsr`-ed, then inline code) and it does not
+work on this machine:
+
+- It never executed at all until it was inline in `Main.s`: the blob had been assembled *before* the
+  entry code, so it became the application's entry point and ran at start-up, not at quit. Every probe
+  result from that period was invalid.
+- Inline, the machine does switch to legacy video and the page does get written, but the video generator
+  reads the page back with an offset and a stride that do not match a plain 40×24 Apple II page: on a
+  24-row page, 25 displayed rows of 40 columns at 10 px per glyph came out shifted ~6 columns left and
+  ~2 rows up, with rows permuted (`ruler/`, `ruler2/`, `ruler3/` probes: display rows read table rows
+  0,3,6,… then 1,4,7,…, and `ROWnn` rulers re-displayed earlier rows instead of trailing blanks).
+- None of the levers changed it: `$C00C` (drop to 40 columns), a fresh `$C029 = $00`, shadow off, both
+  banks `$00/0400` and `$E0/0400` filled, `$C04A-$C04D` (fine/coarse scroll) zeroed.
+- `_QuitGS` was ruled out earlier and stays ruled out: `$0000` → `Can't run next application.
+  Error=$1E06` (nothing to hand off to), our own address → not entered, and there is no Finder here.
+
+### The one thing that had to be measured: pixel order in a word
+
+Four pixels live in one 16-bit word, and the order was not guessed: `--test` renders the same line in
+each of four candidate orders, one band per row. On the boot disk (GSplus) only **`pairSwapped`** reads
+as text, i.e. in memory **each byte holds two pixels, leftmost in the high nibble**, and the two bytes
+of a word are the other way round from what `sta` of a 16-bit word writes. The generator keeps the
+table (`PACKS`) and the measured comment.
+
+### Space — bands, not the whole screen
+
+The full 32,000-byte picture does not fit where the tile data is (`CHRDATA` is already a whole 64 KB
+bank) and a ninth segment is off the table (the GS/OS S16 loader wants eight). So the generator emits
+only the four **text bands** (8 rows × 160 bytes each, 5,120 bytes total) and the quit code clears the
+screen first, then copies each band to the pixel row it was rendered at. `QuitScreen.s` is generated and
+gitignored; `build.js --exitscreen` runs the generator before Merlin.
+
+### Verified
+
+- `--exitscreen --autotest` (a dev build that quits at start-up, so no key press is needed) packed into
+  a scratch `.2mg`: the screen renders exactly as above, white on black, nothing left over from the game,
+  and it stays up (`iigs/tmp/p8test/exit2/t14.png`).
+- The **shipped** boot disk (`build/AlterEgo.2mg`) still passes `npm run test`: title after 9.8 s,
+  Level 1 after 2.3 s, PASS.
+- The **real key path** is confirmed: the user pressed Q → Y in GSplus on `build/AlterEgo.2mg` and the
+  exit screen came up (「有gsplus 按q->y有顯示那個exited畫面」). The harness cannot drive `q` here — it
+  does not reach GSplus, although `Return` does (`iigs/tmp/p8test/qexit/` shows the level still running
+  after `q`) — so that press is the user's; the screen it produces is the one the autotest captured
+  above. Key handling itself was verified on 2026-11-04c.
+
+### Build flags
+
+| Flag | Behaviour |
+|---|---|
+| (none) | full System 6 volume: `_QuitGS $0000`, back to the Finder (`build/AlterEgoGS`) |
+| `--exitscreen` | one-way exit screen, **the boot disk** (`build/AlterEgoGS.exit`, packed by `make:boot`) |
+| `--boot` | preferences + back to the title screen (still available, used by no shipped image) |
+| `--autotest` | dev only: quit at start-up so the quit path needs no key press |
+
+`make:boot` now runs `build.js --exitscreen`, so the boot image can never be packed from a copy that
+quits to the Finder.
+
+### Artifacts
+
+| Item | Value |
+|---|---|
+| `iigs/build/AlterEgo.2mg` | 819,264 B, SHA256 `4115CB7FB6D1CA9B68F6C82BE6D428BBEBB27A4934382929128B89B78870C912`, 1,600 blocks, 495 free, 15 files |
+| `iigs/build/AlterEgoGS.exit` (local) | 316,161 B, SHA256 `505F861B10C3A5045D3FE9F5BE7F3096CC9307A2E7B5C310D2D0605807AE35EC` |
+| `iigs/build/AlterEgoGS` | 313,376 B, SHA256 `0F24BDE5FDE92B4548C684A5E1D1EF2915A5842BC77473AAC6B4A92AA6A0AB1B` (unchanged — reproduced byte for byte) |
+| `iigs/build/AlterEgo-full.2mg` | 3,670,080 B, SHA256 `3D7EA71E36ED892A7F77CE4D4F6381000D77E498F904CDD439DEACBE0308DCB0` (unchanged) |
+
+The `.2mg` hash above is the image exactly as `make:boot` last packed it.  Cadius stamps the ProDOS
+directory entries with the time it ran, so packing the same inputs in a different minute gives a different
+hash (measured: two packs a minute apart differ; two in the same minute are identical).  The
+reproducible part is the application inside it, `AlterEgoGS.exit` `505F861B…`.
+
+### Files touched
+
+- `iigs/src/games/alterego/Main.s` — `QuitToExitScreen` (SHR palette/SCB/picture copy + halt), the
+  `DO QUIT_EXITSCREEN` dispatch at `quit`, `put QuitScreen.s` in the data area, the comment above `quit`
+  rewritten (the text-mode routine and its comment are gone).
+- `iigs/scripts/make-quit-screen.mjs` (new) — renders `QuitScreen.s`; `--test` compares the four pixel
+  orders, `--preview` prints a downsampled view.
+- `iigs/src/games/alterego/build.js` — `--exitscreen`/`QUIT_EXITSCREEN`, runs the generator, publishes
+  `AlterEgoGS.exit`; `--boot` kept for the restart variant.
+- `iigs/scripts/make-boot-2mg.mjs` — builds and packs the `--exitscreen` copy.
+- `iigs/.gitignore` — `QuitScreen.s` is generated; the `Bye8` entries are gone.
+- Removed: `iigs/src/games/alterego/Bye8.s`, `iigs/dist/BYE8`, `iigs/scripts/make-bye8.mjs`,
+  `iigs/tmp/p8test/make-vidprobe.mjs` (the abandoned text-mode experiment).
+- `iigs/dist/README.TXT` — the boot disk's NOTES now say Q ends the game for good and only the reset
+  button starts the machine again (CR line endings kept; the image was repacked after the edit).
+
+## 2026-11-04c — Q on the 800 KiB boot disk: restart, not quit
+
+Reported by the user, verbatim: 「看到了, 原來你直接放到 system目錄下的 start , 那若遊戲中按Q出來, 就當了」.
+On the boot disk there is no Finder and no desktop, so Q → Y asked GS/OS for the next application and
+it stopped on `Can't run next application. Error=$1E06`, sitting on that blue screen.
+
+### What Q does now
+
+One source tree, **two builds**, because what Q can do is a property of the disk:
+
+- **`build/AlterEgoGS`** (`npm run build:alterego`, default): shuts down and calls `_QuitGS`, i.e.
+  back to the Finder.  This is what the full System 6 volume has, and it is what the port always did.
+- **`build/AlterEgoGS.boot`** (`node build.js --boot`, run by `npm run make:boot`): `NES_Pause` +
+  `SavePrefData` + `NES_Resume` + `NES_WarmBoot`, i.e. the preferences are written and the game goes
+  back to its title screen.  It is packed into `build/AlterEgo.2mg` as `/SYSTEM/START`, so the boot
+  image cannot be assembled from a copy that quits.  The file is local (gitignored), the boot image
+  is the tracked deliverable.
+
+The switch is the generated `QuitMode.s` (`QUIT_RESTARTS equ 0|1`), written by
+`src/games/alterego/build.js` before Merlin runs and `put` by `Main.s`; `quit` tests it with the code
+base's `DO`/`ELSE`/`FIN`.  `Main.s` explains both sides in the comment above `quit`.
+
+### Why not detect it at run time
+
+Tried first, and abandoned after these measurements — the negative result is the useful part:
+
+- `_OpenGS` on the Finder's pathname, called from the **quit handler**, failed for every candidate:
+  `1/FINDER`, `2/FINDER`, `2/SYSTEM/FINDER`, `ALTEREGO/SYSTEM/FINDER`, `/ALTEREGO/SYSTEM/FINDER`, and a
+  single-candidate probe `1/START` (the running program's own file) too.  So it was not a wrong path.
+- Moved to **start-up**, before `NES_StartUp`, it works on the boot disk — `1/README.TXT` (a root
+  file) resolves, which is how **prefix 1 was pinned to the boot volume's root** (not the app's
+  directory, and not what `SAVE_FILENAME '1/ae.sav'` had always implied).  It failed on the full
+  volume for `1/SYSTEM/FINDER`, `1/SYSTEM/START.GS.OS` and a sweep of `1/`…`9/SYSTEM/FINDER`, and for
+  `/SYSTEM/FINDER` and `/ALTEREGO/SYSTEM/FINDER` — a path starting with a slash names a *volume*, not
+  a root-relative path.
+- Moved to just after `NES_StartUp`: still "no Finder" on the full volume.  And note that volume's
+  game was launched by the **Finder** (`/SYSTEM/Start` was the game in the test copy), so the prefixes
+  it inherits are the Finder's — 1 through 9 all missed the boot root.
+
+A build switch has no such blind spot, and both shipped disks get the behaviour they can actually
+support.
+
+### Verified
+
+- `build/AlterEgo.2mg` (boot disk), GSplus at `Limit: 16.0Mhz`: boot → title → `Q` (QUIT GAME box) →
+  `Y` → **title screen again**, game continues; no `Can't run next application. Error=$1E06`.
+  Captures: `iigs/tmp/qtest/03-after-y.png`, `04-later.png`.
+- A full System 6 volume with the default build installed as `/SYSTEM/Start` → `Q`, `Y` → GS/OS
+  relaunches its start application (the game) and the title comes back; the `$1E06` stop is gone.
+  `iigs/tmp/qtest-full/`.
+- `npm run test`: title after **9.9 s**, Level 1 after **2.3 s**, same pixel signatures, PASS.
+- The keyboard harness (`iigs/scripts/gsplus-input.ps1`) now posts `WM_KEYDOWN`/`WM_KEYUP` instead of
+  `keybd_event`; with it Q is delivered reliably, and the earlier "Q does nothing" sessions were the
+  harness, not the game (Caps Lock was a red herring: `NES_EvtLoop` accepts `q` and `Q` alike).
+
+### Trap — `npm run test` dirtied the shipped image
+
+`test-alterego.mjs` used to boot `build/AlterEgo.2mg` itself, so the guest's writes (a preferences file
+at the volume root) changed a tracked deliverable.  It now copies the image to `tmp/test/` and rewrites
+`s7d1` to that copy, the same way it already used a scratch `.kegs` for `ssdir`; `build/AlterEgo.2mg`
+is byte-identical before and after a run.
+
+### Artifacts
+
+| Item | Value |
+|---|---|
+| `iigs/build/AlterEgoGS` | 313,376 B, SHA256 `0F24BDE5FDE92B4548C684A5E1D1EF2915A5842BC77473AAC6B4A92AA6A0AB1B` (full-volume build: Q quits) |
+| `iigs/build/AlterEgoGS.boot` (local) | 313,359 B, SHA256 `444E63AE1C9A34E33BCB1E17EFE06B661C2C77C1D117BBE9F97B9985BC26C174` (boot-disk build: Q restarts) |
+| `iigs/build/AlterEgo.2mg` | 819,264 B, SHA256 `2B8F3011220C5E34139DE5566EC521833598D1B17FB8FA67D585B87EEA3BF251`, 1,600 blocks, 500 free, 15 files |
+| `iigs/build/AlterEgo-full.2mg` | 3,670,080 B, SHA256 `3D7EA71E36ED892A7F77CE4D4F6381000D77E498F904CDD439DEACBE0308DCB0`, 7,168 blocks, 729 free, 185 files |
+
+### Files touched
+
+- `iigs/src/games/alterego/Main.s` — the `DO QUIT_RESTARTS` quit block, `put QuitMode.s`; the
+  run-time `HasFinder` probe and its records are gone.
+- `iigs/src/games/alterego/build.js` — `--boot`, `QuitMode.s`, publishes `AlterEgoGS.boot`.
+- `iigs/scripts/make-boot-2mg.mjs` — builds the boot-disk copy itself and packs that.
+- `iigs/scripts/test-alterego.mjs` — boot a scratch copy of the image.
+- `iigs/.gitignore` — `QuitMode.s` and `AlterEgoGS.boot` are local.
+- `iigs/dist/README.TXT` — the key sheet on the boot disk now says what Q does there ("EXIT GAME and
+  Q (then Y) return to the game's title screen", "On a full System 6 disk Q (then Y) quits to the
+  Finder instead"); the image was repacked after the edit.
+- `iigs/CHANGES.md` (2026-11-04c, `Q` in the key table), `iigs/README.md` (Q on the boot disk,
+  `make:boot` builds the copy), this entry.
+
+## 2026-11-04b — release boot disk: 800 KiB, GS/OS boot set + the game only
+
+The release image is now **819,264 bytes** — a 64-byte 2IMG header plus 1,600 blocks (800 KiB), down
+from 3.5 MB: ProDOS 8, the minimal GS/OS 6 boot set and the game, nothing else.  GS/OS launches
+`/SYSTEM/START` at boot and that file is the game, so there is no Finder and no desktop — booting goes
+straight into the game.
+
+### How — the silky-gs boot template, never a hand-built subset
+
+`build/AlterEgo.2mg` is generated by `npm run make:boot` (`scripts/make-boot-2mg.mjs`):
+
+- template **`dist/GSBoot.2mg`** (819,264 B): the silky-gs distribution's minimal GS/OS 6 boot disk,
+  made by that repository's `scripts/make-boot-disk.js`.  It holds ProDOS, `Start.GS.OS`, `GS.OS`,
+  `GS.OS.Dev`, `AppleDisk3.5`/`Console.Driver`, `Char.FST`/`Pro.FST`, `Error.Msg` and
+  `System.Setup/{Resource.Mgr,Tool.Setup,TS2,TS3}` — 478 blocks, no Finder, no Tools, no CDEVs, no
+  Icons.
+- the script renames the volume to `ALTEREGO`, adds `build/AlterEgoGS` as **`/SYSTEM/START`** (staged
+  as `Start#B3DB03`, so Cadius keeps ProDOS type S16 `$DB03`; 613 blocks), and adds `dist/README.TXT`
+  at the root as a `$B0` ProDOS text file (CR line endings).  It then checks the catalogue (`Start
+  S16` in `/SYSTEM`, `README.TXT $B0`, `Block : 1600`) because Cadius exits 0 even when `ADDFILE`
+  fails.
+- `/SYSTEM/START` is the name upstream's `build-single.bat` gives every game disk; GS/OS launches it
+  at boot, so no `Start.Data` pointer is needed.
+
+A 800K volume assembled by hand from the 3.5 MB image's files does **not** boot: GS/OS stops with
+"Sorry, system error $0046 occurred while loading the start PSI file" because the subset misses boot
+files — that was the 2026-11-03 attempt.  The template is a boot set that is known to boot.
+
+### Verified
+
+- `npm run test` on the 800 KiB disk: title after **9.9 s** (the 3.5 MB volume needs 12.2 s, because
+  GS/OS loads the whole System 6 and the Finder there), Level 1 after **2.3 s**, same pixel
+  signatures (grey 24 / orange 3132 / teal 28 and grey 9192 / teal 4688 / orange 9260), PASS.
+- GSplus at `Limit: 16.0Mhz` with `s7d1` = `build/AlterEgo.2mg`: title, then Level 1
+  ("HELLO WORLD") on the first Return — captures in `iigs/tmp/slim/shots800/`.
+- `cadius CATALOG`: 1,600 blocks, 15 files, **500 free**; `CHECKVOLUME` reports nothing.
+
+### Artifacts
+
+| Item | Value |
+|---|---|
+| `iigs/build/AlterEgo.2mg` | 819,264 B, SHA256 `4E428232…`, 1,600 blocks, 500 free |
+| `iigs/build/AlterEgo-full.2mg` | 3,670,080 B, SHA256 `7F0567BF…`, the 3.5 MB System 6 volume |
+| `iigs/build/AlterEgo.po` (generated) | 819,200 B, SHA256 `8D7EB229…`, 1,600 blocks |
+| `iigs/dist/GSBoot.2mg` | 819,264 B, SHA256 `B7E01149…` |
+| `iigs/build/AlterEgoGS` | 313,359 B, SHA256 `88281425…` (unchanged) |
+
+### Files touched
+
+- `iigs/scripts/make-boot-2mg.mjs` (new), `iigs/package.json` (`"make:boot"`),
+  `iigs/dist/GSBoot.2mg` and `iigs/dist/README.TXT` (new, tracked), `iigs/build/AlterEgo.2mg` (the
+  800 KiB image), `iigs/build/AlterEgo-full.2mg` (the 3.5 MB image, renamed), `iigs/.gitignore`
+  (allowlist entry for the full image).
+- `iigs/README.md` (boot image, rebuild and release sections), root `README.md` (image and `.po`
+  bullets), `iigs/CHANGES.md`, this entry.
+- `iigs/scripts/trim-2mg.mjs` now defaults to `build/AlterEgo-full.2mg`; `iigs/build/AlterEgo.po` is
+  regenerated locally and stays gitignored.
+
+## 2026-11-04 — boot image trimmed 10 MB → 3.5 MB (`npm run trim`)
+
+The image had grown out of a stock 10 MB ProDOS volume; System 6 plus
+`/ALTEREGO/AlterEgoGS.S16` only fill 6,439 of its 20,480 blocks, so ~7 MB of every release file was
+empty volume.  It is now **7,168 blocks / 3,670,080 bytes**, the smallest 0.5 MiB multiple that still
+contains the highest allocated block (7,127).
+
+### How — patch and truncate, never repack
+
+`iigs/scripts/trim-2mg.mjs` (`npm run trim`, in place, idempotent) reads the 2IMG header, finds the
+volume's allocation bitmap and rewrites three size fields:
+
+- **bitmap location.**  The volume directory file starts at block 2 and chains through `next` (block
+  offset `+2`) to its last block; block 5 here, so the bitmap starts at **block 6**.  It is
+  `ceil(total/4096)` blocks (5 for 20,480, 2 for 7,168), one bit per block, **0 = in use, 1 = free**
+  (confirmed against the image: block 6 starts `00` for the boot/header/dir/blocks-11-onward, block 10
+  — past all data — is `FF`; counting 0 bits gives 6,439, which is exactly `cadius CATALOG`'s
+  `Free 14041`).  The *total-blocks* word is at block 2 offset **`$29`** in every reference volume
+  (`ALTEREGO` 0x5000, `GSBoot` 0x0640, ProDOS 2.4.3 0x0118) — it is *not* at the same offset as the
+  date fields, which is what made the first attempts guess wrong.
+- **patch**: volume header total blocks (`$29`), bitmap bits at/after the new end set to 0 (in use) so
+  nothing can allocate past the volume, and the 2IMG header's block count (`+20`) / data size (`+28`)
+  / file truncation.  Nothing else is touched: file data, resources forks and GS/OS extended entries
+  come along byte for byte.
+- **the old bitmap blocks.**  Blocks 8-10 were bitmap blocks of the 20,480-block volume; the smaller
+  volume no longer needs them.  They are left **allocated** on purpose — freeing them made
+  `cadius CHECKVOLUME` report the *inverse* complaints (it then called blocks 13-15 free although
+  they hold `/ALTEREGO/BASIC.System`), so the conservative state is the one that boots.  Result:
+  `CHECKVOLUME` reports exactly those three as "in use but not referenced" and nothing else.
+- Anything that re-creates the volume instead (Cadius `CREATEVOLUME` + `ADDFOLDER`/`ADDFILE`) risks
+  dropping forks and the GS/OS extended entries, so the script deliberately never does that.
+
+### Verified
+
+- `npm run test` on the trimmed image: title after **12.2 s**, Level 1 after **2.3 s**, same pixel
+  signatures as before (grey 24 / orange 3132 / teal 28 and grey 9192 / teal 4688 / orange 9260), PASS.
+- `cadius CATALOG`: 7,168 blocks, **729 free**, **185 files**, **11 directories** — identical file
+  list to the 10 MB image (compared line by line; the only difference is the totals row).
+- The script is deterministic: trimming the 10 MB backup again reproduces the tracked file byte for
+  byte (SHA256 `7F0567BF…`), and a second run on the trimmed image is a no-op.
+
+### Artifacts
+
+| Item | Value |
+|---|---|
+| `iigs/build/AlterEgo.2mg` | 3,670,080 B, SHA256 `7F0567BFA1B9E118FF969A753E64B644B7989022D7D56A1BA58A31F5D86013B7` |
+| `iigs/build/AlterEgo.po` (generated) | 3,670,016 B, SHA256 `5E4E56A56E55530EF786A3CAB454E2BC375B0C6FA935438B5953BE54CAFB7121` |
+| `iigs/build/AlterEgoGS` | 313,359 B, SHA256 `88281425…` (unchanged) |
+
+### Files touched
+
+- `iigs/scripts/trim-2mg.mjs` (new), `iigs/package.json` (`"trim"`), `iigs/build/AlterEgo.2mg`.
+- `iigs/README.md` (image size, printed `make:po` output, trimming note), root `README.md` (image size,
+  `.po` block count), `iigs/CHANGES.md`, this entry.
+- `iigs/build/AlterEgo.po` is regenerated locally (`npm run make:po`) and stays gitignored.
+
+## 2026-11-03 — upstream triage (Lucas), silky-gs issue 29 (refiled as 46), 16 MHz release baseline
 
 ### Upstream triage — Lucas Scharenbroich's five suggestions, checked against this port
 
@@ -34,12 +676,18 @@ against the sources, not assumed:
 
 ### Upstream issue filed
 
-<https://github.com/lscharen/iigs-game-engine/issues/29> — "Pre-built/embedded compiled sprites: data
-point from a CHR-ROM port".  This game is `HAS_CHR_RAM equ 0` (NROM, fixed 8 KB CHR-ROM), i.e. the
-case that optimisation targets.  The issue carries the observation that the v0.0.2 sprite compiler is
-already lazy and cached per (tile, palette, flip) and dispatched through `SPR_COMP_TBL`, so
+<https://github.com/lscharen/silky-gs/issues/46> — "Pre-built/embedded compiled sprites: data point
+from a CHR-ROM port (Alter Ego)".  This game is `HAS_CHR_RAM equ 0` (NROM, fixed 8 KB CHR-ROM), i.e.
+the case that optimisation targets.  The issue carries the observation that the v0.0.2 sprite compiler
+is already lazy and cached per (tile, palette, flip) and dispatched through `SPR_COMP_TBL`, so
 pre-building would buy **startup** and cache-miss time, not steady state, plus three design questions
 (scope, CHR-layout assumption, runtime fallback).
+
+It was filed first as <https://github.com/lscharen/iigs-game-engine/issues/29> and that was the wrong
+repository: lscharen closed it as completed the same day — "This issue was opened in the wrong
+repository. Items related to the Silky-GS NES runtime should be opened in the `silky-gs` repository."
+The runtime is what the request targets, so it was refiled in `silky-gs` on 2026-11-04 (and #29 got a
+comment pointing at the refile); keep `issues/46` as the live link in anything written from here on.
 
 The tile-renderer question is drafted in `docs/upstream-issues/tile-renderer.md` and is deliberately
 **not** filed: upstream says that renderer is "not close to ready", and the only thing we need from it
@@ -966,15 +1614,11 @@ symptom is the title screen drawn but the game ignoring every key (see the 2026-
    normal, so levels 1–5, LEVEL CLEAR and the WELL DONE ending are exercised in practice; the
    repository still has no captures of GAME OVER, WELL DONE, LEVEL CLEAR or levels 2–5.  Capture them
    if they are ever needed as evidence — nothing about the port depends on it.
-7. **Release is ready but deliberately unpublished** (2026-11-03, user: 「先ready好, 不急著release」).
-   Ready means: `npm run test` prints `PASS` on the tracked `build/AlterEgo.2mg` (title 12.2 s,
-   Level 1 2.3 s), and `npm run make:po` regenerates `build/AlterEgo.po` byte-identically every run
-   (SHA256 `8D2B5B36…`, verified twice), so the artifact a2gsemu-ia gets can always be recreated from
-   the committed image.  What is *not* done: no tag, no upload, no GitHub release.  When the time
-   comes the whole job is `cd iigs; npm run make:po`, upload `build/AlterEgo.po` (or the `.2mg`), and
-   tell a2gsemu-ia to run that disk at ≥ 7.1 MHz / 16 MHz — below that the port falls back to its
-   2.8 MHz cadence (about 30 fps, 2–3 minute boot).  A tag name (candidate `iigs-v0.0.2`) is still
-   undecided.
+7. **Release published** (2026-11-04, tag `iigs-v0.0.2`) — supersedes this bullet's "deliberately
+   unpublished" state of 2026-11-03 (user: 「先ready好, 不急著release」).  The GitHub release carries
+   `build/AlterEgo.2mg` and `build/AlterEgo-full.2mg`; the `.po` is not an asset.  What anyone running
+   it needs to know: boot at ≥ 7.1 MHz / 16 MHz; below that the port falls back to its 2.8 MHz cadence
+   (about 30 fps, 2–3 minute boot).  See 2026-11-04e for the tag, assets and hashes.
 
 ## Provenance
 

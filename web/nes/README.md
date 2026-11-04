@@ -37,6 +37,49 @@ button is the quickest way to tell a keyboard problem from a game rule.  The bar
 Mute / Volume / Fullscreen / Load another .nes, and any `.nes` can be dropped on the page.  Cold boot
 starts with the original NES credits screen (English text, as on the real cartridge); Space skips it.
 
+The header has the large **ALTER EGO** title on the left and, at its right edge — the header is exactly
+the stage's width, so the links stop at the emulator's right border — the Apple II VERA port (Apple2TS,
+our own Pages build at <https://anomixer.github.io/apple2ts/> — upstream `apple2ts.com` has a broken VERA
+display), the Apple IIgs port (a2gsemu-ia) and the GitHub mark for
+<https://github.com/anomixer/alter-ego>.
+
+## Published site (GitHub Pages)
+
+The player is deployed: <https://anomixer.github.io/alter-ego/nes/index.html>.  The site root,
+<https://anomixer.github.io/alter-ego/>, is [`web/index.html`](../index.html) — one card per target
+(NES, Apple IIgs, Apple //e + VERA) — and the player is `nes/index.html` under it.
+
+[`.github/workflows/deploy-web.yml`](../../.github/workflows/deploy-web.yml) runs on every push that
+touches `src/` or `web/`: it installs cc65, runs `build-rom.mjs`, then `test.mjs` (so a ROM that does
+not reach the title fails the deploy instead of being published), assembles `web/_site` with
+[`web/build-site.mjs`](../build-site.mjs) and uploads that directory as the Pages artifact.  The
+repository must have Settings → Pages → Source set to **GitHub Actions**; nothing else is configured,
+and no branch is served.
+
+`build-site.mjs` publishes only the page files plus the generated `build/alterego.nes` and
+`build/rom-base64.js`; it also refuses to assemble a site whose HTML points at a missing local file.
+`web/_site` is gitignored.
+
+The root page's heading is the game's own word mark, not text: `web/assets/alter-ego-logo.png`
+(206×39, committed) is cut from the NES title screen by [`make-logo.mjs`](make-logo.mjs).  The title
+draws each word twice — a bright copy and a dimmer one one word-height away (ALTER's under the letters,
+EGO's above them); the page keeps one copy per word and drops the other, which is the "reflection" the
+user did not want.  ALTER comes from the background copy and EGO from the sprite copy, each recoloured
+by shade rank onto the other word's ramp (so ALTER is orange/amber and EGO blue), the 1-4 px stars are
+dropped by component size, and black becomes transparent so the letters sit on the page's dark
+background.  The words keep the title's own columns but are moved up to a common top row, so the mark
+is a single line (206×39) with the title's 17 px gap between ALTER and EGO.  Re-run
+`node web/nes/make-logo.mjs` (`--report` prints what it kept and dropped) if the
+title art ever changes; `png.mjs` has `writePngRgba` for the alpha.
+
+The cc65 package on Linux keeps `nes.lib` outside `bin/` (`/usr/share/cc65/lib/nes.lib`), so
+`build-rom.mjs` accepts `CC65_LIB` and otherwise tries the usual Linux/macOS locations; the workflow
+passes it explicitly.  A CI checkout therefore builds the same ROM as a local one:
+
+```
+ROM 40,976 bytes (32 KB PRG + 8 KB CHR, mapper 0), title at 252 frames, Level 1 92 frames after Start
+```
+
 ## Sound: why app.js drives audio itself
 
 jsnes' `Browser` class plays through an `AudioWorklet` module that it builds as a `blob:` URL.  When

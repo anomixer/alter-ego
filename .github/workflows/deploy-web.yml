@@ -1,0 +1,80 @@
+name: Deploy the browser players to GitHub Pages
+
+# Builds the NES ROM from src/ (never committing a binary), smoke-tests it
+# headlessly, assembles web/_site and publishes it.  The site root is
+# web/index.html and the jsnes player is /nes/index.html.
+#
+# One-time repository setting: Settings -> Pages -> Build and deployment ->
+# Source: "GitHub Actions".  Without it the deploy job fails.
+
+on:
+  push:
+    branches:
+      - master
+      - main
+    paths:
+      - 'src/**'
+      - 'web/**'
+      - '.github/workflows/deploy-web.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  pages: write
+  id-token: write
+
+concurrency:
+  group: pages
+  cancel-in-progress: true
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Install cc65 (the NES toolchain)
+        run: |
+          set -euo pipefail
+          sudo apt-get update
+          sudo apt-get install -y --no-install-recommends cc65
+          cc65 --version
+          ca65 --version
+          ld65 --version
+          # build-rom.mjs links the installed library: src/nes.lib is the
+          # historical copy and ld65 2.19 rejects it.  The package keeps the
+          # library outside bin/, so name it rather than guessing the path.
+          lib="$(find /usr -name nes.lib -path '*cc65*' -print -quit)"
+          echo "installed nes.lib: ${lib:-<not found>}"
+          echo "CC65_LIB=$lib" >> "$GITHUB_ENV"
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+
+      - name: Compile the ROM from src/
+        run: node web/nes/build-rom.mjs
+
+      - name: Smoke-test the ROM headlessly
+        run: node web/nes/test.mjs
+
+      - name: Assemble the site
+        run: node web/build-site.mjs
+
+      - name: Upload the Pages artifact
+        uses: actions/upload-pages-artifact@v3
+        with:
+          path: web/_site
+
+  deploy:
+    needs: build
+    runs-on: ubuntu-latest
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    steps:
+      - name: Deploy to GitHub Pages
+        id: deployment
+        uses: actions/deploy-pages@v4

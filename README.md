@@ -10,7 +10,16 @@ root file that differs from upstream.
 | root | upstream NES sources: `src/`, `Makefile` | the NES ROM, built by [`web/nes/build-rom.mjs`](web/nes/build-rom.mjs) |
 | [`vera/`](vera/) | Apple II / II+ / IIe with a VERA card (cc65, NMOS 6502) | `vera/build/alter-ego-vera.hdv` (FamiTone, default), `vera/build/alter-ego-vera-psg.hdv` (streamed PSG), and the FamiTone dual-floppy `-D1.po` / `-D2.po` pair |
 | [`iigs/`](iigs/) | Apple IIgs through silky-gs (65816) | [`iigs/build/AlterEgo.2mg`](iigs/build/AlterEgo.2mg) |
-| [`web/nes/`](web/nes/) | jsnes browser player for the original NES game | [`web/nes/index.html`](web/nes/index.html) — compiles the ROM from `src/`, so no binary is shipped |
+| [`web/nes/`](web/nes/) | jsnes browser player for the original NES game | [`web/nes/index.html`](web/nes/index.html) — compiles the ROM from `src/`, so no binary is shipped; published to GitHub Pages by [`.github/workflows/deploy-web.yml`](.github/workflows/deploy-web.yml) |
+
+Play in a browser — every target has a page:
+
+| Target | Play | What runs there |
+| --- | --- | --- |
+| NES (original) | 👉 [PLAY HERE](https://anomixer.github.io/alter-ego/nes/index.html) | the jsnes page in [`web/nes/`](web/nes/), playing the ROM compiled from `src/` when the site was built |
+| Apple IIgs | 👉 [PLAY HERE](https://a2gsemu-ia.pages.dev/?lang=en&game=https%3A%2F%2Fgithub.com%2Fanomixer%2Falter-ego) | a2gsemu-ia booting the released 800 KiB disk (tag `iigs-v0.0.2`); `Q`, then `Y`, leaves the game on its exit screen |
+| Apple //e + VERA | 👉 [PLAY HERE](https://anomixer.github.io/apple2ts/?slot2=vera&tab=vera#https://raw.githubusercontent.com/anomixer/alter-ego/master/vera/build/alter-ego-vera.hdv) | Apple2TS (our own Pages build — upstream's VERA display is broken) streaming [`vera/build/alter-ego-vera.hdv`](vera/build/alter-ego-vera.hdv) from this repository |
+
 
 The repository was called `alter-ego-vera` while VERA was the only target; it is now plain
 `alter-ego`.  Release images keep their `alter-ego-vera*` filenames — those are artifact names, not
@@ -313,9 +322,19 @@ graphics and DOC audio.  It is not an emulator, and no VERA card is involved.  T
 original 32 KB NES program, the original FamiTone2 music/SFX data and the NES level data; the 65816
 side supplies the screen, the palette pipeline and the audio mixing.
 
-- **Boot image:** [`iigs/build/AlterEgo.2mg`](iigs/build/AlterEgo.2mg) — a 10 MB ProDOS image,
-  volume `ALTEREGO`, with the program `/ALTEREGO/AlterEgoGS.S16` (313,359 bytes).  The source of that
-  program is `iigs/`; see [`iigs/README.md`](iigs/README.md) and [`iigs/AGENTS.md`](iigs/AGENTS.md).
+- **Download:** tag [`iigs-v0.0.2`](https://github.com/anomixer/alter-ego/releases/tag/iigs-v0.0.2)
+  carries the two disks below as release assets — `AlterEgo.2mg` (819,264 bytes,
+  SHA256 `4115CB7F…`) and `AlterEgo-full.2mg` (3,670,080 bytes, SHA256 `3D7EA71E…`), byte for byte
+  the tracked files in `iigs/build/`.
+- **Boot image:** [`iigs/build/AlterEgo.2mg`](iigs/build/AlterEgo.2mg) — a GS/OS boot disk (an
+  819,264-byte `.2mg`: a 64-byte 2IMG header plus 1,600 blocks = 800 KiB), volume `ALTEREGO`, that
+  boots straight into the game:
+  GS/OS starts `/SYSTEM/START`, which is the 316,161-byte program built from `iigs/`.  `npm run
+  make:boot` rebuilds it from the silky-gs minimal boot set, so the disk holds ProDOS 8, the GS/OS
+  files it needs and the game, and nothing else (495 blocks free).  The full System 6 version is
+  [`iigs/build/AlterEgo-full.2mg`](iigs/build/AlterEgo-full.2mg) — 3,670,080 bytes, trimmed down from
+  the 10 MB volume, with the Finder desktop and the game as `/ALTEREGO/AlterEgoGS.S16`.  The source of
+  the program is `iigs/`; see [`iigs/README.md`](iigs/README.md) and [`iigs/AGENTS.md`](iigs/AGENTS.md).
 - **Screen:** 320×200 Super Hi-Res.  The 256×200 playfield is centred at `x_offset=16` and maps NES
   scanlines 16–215; the title and credits are full-screen NES content.  Gameplay uses the engine's
   dirty-grid renderer, so only changed background cells and sprites are drawn each frame.
@@ -328,9 +347,10 @@ side supplies the screen, the palette pipeline and the audio mixing.
   original 16-frame animation cadence (about 30 fps), at the cost of a 2–3 minute boot.  An
   accelerator in between (a TransWarp GS at 7.1 MHz) sits proportionally between the two — the
   renderer's per-frame cost is fixed, so smoothness scales roughly with the clock.
-- **Raw `.po`:** `npm run make:po` in `iigs/` derives `iigs/build/AlterEgo.po` — the same 10 MB
-  ProDOS 8 volume (20480 blocks) with the 2IMG header stripped — for emulators that take a bare
-  ProDOS-order image.  It is generated, not committed; the `.2mg` is what is released.
+- **Raw `.po` (optional, not part of the release):** `npm run make:po` in `iigs/` derives
+  `iigs/build/AlterEgo.po` — the same **800 KiB** ProDOS 8 volume (1,600 blocks) with the 2IMG header
+  stripped — for emulators that take a bare ProDOS-order image.  It is generated and not committed;
+  the release ships the two `.2mg` files.
 - **NES program:** `iigs/src/games/alterego/prg.bin` must stay exactly 32,768 bytes.  The shipped
   file is reproduced byte for byte from the objects kept in [`iigs/prg-src/`](iigs/prg-src/README.md)
   (SHA256 `C4CB0445…`), so a PRG change is rebuilt there with cc65 and relinked before the Merlin
@@ -350,8 +370,11 @@ Start-Process C:\dev\emu\GSplus\gsplus.exe `
 Click the GSplus window, wait for the title, then press **Return**; inputs sent before the title
 appears are lost.  The `.kegs` file's `s7d1` entry points at `iigs/build/AlterEgo.2mg`, so it follows
 this checkout as long as the repository stays at `C:\dev\alter-ego` (edit `s7d1` if it moves).
-Rebuilding the application needs Node.js, Merlin32 and Cadius; repackage the boot image with Cadius
-`REPLACEFILE` as described in [`iigs/README.md`](iigs/README.md).  `npm run test` in `iigs/` boots the
+Rebuilding the application needs Node.js, Merlin32 and Cadius; `npm run make:boot` then rebuilds the
+800 KiB boot disk, building its own copy of the game (`build/AlterEgoGS.exit`, which ends the game on
+Q with a "safe to turn off" screen)
+so the disk is never packed with a build that quits (swap the application into the full volume with
+Cadius `REPLACEFILE` instead, as described in [`iigs/README.md`](iigs/README.md)).  `npm run test` in `iigs/` boots the
 committed image in GSplus and asserts that the title and Level 1 screens actually drew (pixel checks
 on GSplus' own screenshots), so a rendering regression fails the run instead of only being noticed by
 eye.
@@ -365,6 +388,7 @@ eye.
 | Tab | NES Select; opens and closes the sound test on the title |
 | Left / Right on title | Change the START LEVEL value (0–25; 0 is the hidden Cow Level) |
 | ? (Shift-/) | Open the silky-gs options panel (audio, input, drivers, credits) |
+| Q | Quit, after a Y/N confirmation: on the 800 KiB boot disk it saves the settings, leaves a “game has exited — safe to turn off” screen and stops (only the reset button starts the machine again; that disk has no Finder); on the full System 6 disk it returns to the Finder |
 
 The title menu, sound test, pause menu and Cow Level work as in the VERA build, with two exceptions
 forced by the one-key-at-a-time keyboard shim: the NES key chords cannot be typed, so the A+B
@@ -384,6 +408,12 @@ or of GAME OVER.  The dated log, engine constraints and open items are in
 
 ## Play the NES original in a browser
 
+👉 **[PLAY HERE](https://anomixer.github.io/alter-ego/nes/index.html)** — the page is published to
+GitHub Pages by [`.github/workflows/deploy-web.yml`](.github/workflows/deploy-web.yml), the site root
+is [`web/index.html`](web/index.html) and the player is `nes/index.html` under it.  Nothing has to be
+committed to make that work: the workflow installs cc65, compiles `src/`, smoke-tests the ROM and
+uploads `web/_site`.
+
 [`web/nes/index.html`](web/nes/index.html) plays the original NES game through
 [jsnes](https://github.com/bfirsh/jsnes) 2.1.0 (Apache-2.0, vendored in `web/nes/vendor/`).  It is one
 static page — open the file directly or serve the directory — and the ROM it plays is compiled from
@@ -393,7 +423,11 @@ this repository's `src/` and embedded as base64, so the page also works from `fi
 cd web\nes
 node build-rom.mjs     # cc65/ca65/ld65 -> build/alterego.nes + build/rom-base64.js
 node test.mjs          # headless jsnes smoke test (title -> Start -> Level 1), PASS/FAIL
+node ..\build-site.mjs # web/_site: the landing page plus nes/, as the workflow publishes it
 ```
+
+`build-site.mjs` copies the tracked page files and the generated `build/` files into `web/_site`
+(gitignored) and fails if a page references a file that is not there.
 
 The ROM (40,976 bytes: 32 KB PRG + 8 KB CHR, mapper 0) is generated and gitignored, so no binary is
 committed; `build-rom.mjs --from <file.nes>` stages an existing ROM instead.  Measured on the
@@ -422,6 +456,12 @@ screen, which is English, as on the cartridge; Space skips it.
 ## Documentation
 
 Design records and notes, grouped by port.
+
+**Browser players**
+
+- [`web/nes/README.md`](web/nes/README.md) — the jsnes page: layout, its self-driven audio path, the headless smoke test and the Pages deployment.
+- [`web/build-site.mjs`](web/build-site.mjs) — assembles `web/_site` (landing page plus `nes/`) and refuses to publish a page whose local references are missing.
+- [`.github/workflows/deploy-web.yml`](.github/workflows/deploy-web.yml) — installs cc65, compiles and smoke-tests the ROM, then publishes the site.
 
 **Apple IIgs / silky-gs**
 

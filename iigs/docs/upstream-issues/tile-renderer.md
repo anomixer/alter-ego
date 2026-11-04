@@ -5,7 +5,9 @@
   queue ABI, because this tree is a v0.0.2 snapshot with its own in-bank `$7E00` shim table.
 - **File it when:** upstream announces the renderer, or when a frame-budget problem makes adoption
   worth evaluating.
-- **Where it would go:** <https://github.com/lscharen/iigs-game-engine/issues> (new issue).
+- **Where it would go:** <https://github.com/lscharen/silky-gs/issues> (new issue).  The runtime lives
+  in `silky-gs`; `iigs-game-engine` is the wrong repository for runtime questions (2026-11-04, after
+  the compiled-sprites request was closed there for that reason and refiled as `silky-gs` issue 46).
 
 ## Title
 

@@ -10,7 +10,7 @@
 //   --level-timeout <s> seconds allowed for Level 1 after Return (default 120)
 // Environment: AE_GS_GSPLUS overrides the emulator path.
 import { spawn, spawnSync } from 'node:child_process';
-import { existsSync, mkdirSync, readFileSync, readdirSync, rmSync, statSync, writeFileSync } from 'node:fs';
+import { existsSync, mkdirSync, readFileSync, readdirSync, copyFileSync, rmSync, statSync, writeFileSync } from 'node:fs';
 import { dirname, join, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { inflateSync } from 'node:zlib';
@@ -212,14 +212,19 @@ async function main() {
     mkdirSync(SHOTS, { recursive: true });
     for (const name of readdirSync(SHOTS)) rmSync(join(SHOTS, name), { force: true });
 
-    // GSplus writes screenshots into the directory named by `ssdir`; use a scratch copy of the
-    // configuration so the checked-in one stays untouched.
+    // GSplus writes screenshots into the directory named by `ssdir`, and the guest can write the
+    // disk it boots, so use a scratch copy of both the configuration and the image: the checked-in
+    // configuration and build/AlterEgo.2mg must come out of a test run byte for byte as they were.
+    const scratchImage = join(SHOTS, 'AlterEgo.2mg');
+    copyFileSync(IMAGE, scratchImage);
     const scratchKegs = join(SHOTS, 'alterego-test.kegs');
-    const kegsText = readFileSync(KEGS, 'utf8').replace(/^ssdir = .*$/m, `ssdir = ${SHOTS}`);
+    const kegsText = readFileSync(KEGS, 'utf8')
+        .replace(/^ssdir = .*$/m, `ssdir = ${SHOTS}`)
+        .replace(/^s7d1 = .*$/m, `s7d1 = ${scratchImage}`);
     writeFileSync(scratchKegs, kegsText);
 
     console.log('Alter Ego / Apple IIgs smoke test');
-    console.log(`  image : ${IMAGE} (${statSync(IMAGE).size} bytes)`);
+    console.log(`  image : ${IMAGE} (${statSync(IMAGE).size} bytes, booted from ${scratchImage})`);
     console.log(`  emu   : ${gsplus}`);
     console.log(`  shots : ${SHOTS}`);
 

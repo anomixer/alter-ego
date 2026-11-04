@@ -8,17 +8,23 @@ root itself mirrors upstream `avshabanov/alter-ego` (only `README.md` differs), 
 the shared NES sources.
 
 It is a snapshot of the working tree that was used to bring Alter Ego up on GSplus, including the
-current bootable 3.5" image:
+current bootable 3.5" images:
 
-- **Boot image:** [`build/AlterEgo.2mg`](build/AlterEgo.2mg) (10 MB ProDOS image)
+- **Boot image:** [`build/AlterEgo.2mg`](build/AlterEgo.2mg) (800 KiB GS/OS boot disk: the game is
+  `/SYSTEM/START`, so it boots straight into the game)
+- **Full System 6 image:** [`build/AlterEgo-full.2mg`](build/AlterEgo-full.2mg) (3.5 MB ProDOS 8
+  volume with System 6 and the Finder, the game as `/ALTEREGO/AlterEgoGS.S16`)
 - **Application:** [`build/AlterEgoGS`](build/AlterEgoGS) (313,359 bytes)
 - **Current screen:** ![Alter Ego gameplay on GSplus](docs/screenshots/shot_final_aligned_game.png)
 - **Credits:** ![Alter Ego credits on GSplus](docs/screenshots/shot_final_credits.png)
 - **Title:** ![Alter Ego title on GSplus](docs/screenshots/shot_final_title.png)
 - **Runtime options:** ![silky-gs options menu](docs/screenshots/shot_config_menu.png)
 
-## Current status (2026-11-01, branch `master`)
+## Current status (2026-11-04, branch `master`)
 
+- **Released:** tag
+  [`iigs-v0.0.2`](https://github.com/anomixer/alter-ego/releases/tag/iigs-v0.0.2) ships the two disks
+  in `build/` — the 800 KiB boot disk and the full System 6 volume (see "Release" below).
 - Boots on GSplus; title → level 0 is playable, with music and SFX enabled.
 - Playfield is the NES 32×20 tile map at **256×200** displayed inside the 320×200 SHR screen.
 - Single gameplay band: SHR lines 0–199 map to NES rows 16–215 (`y_offset=16`).  The HUD stats,
@@ -130,48 +136,116 @@ ld65 -C nes_silky.cfg -o prg.bin objects\crt0_silky.o objects\neslib_new.o `
 rejects `phk`/`plb`.  Re-derive any binary patch from a fresh link if you rebuild the PRG, and see
 `iigs/prg-src/README.md` for the full C-side recipe.
 
-## Repackage the boot image
+## Rebuild the boot image
 
-Cadius replaces a file in place; stage the app under its ProDOS name first:
+`build/AlterEgo.2mg` is **generated**, not edited: `dist/GSBoot.2mg` (the silky-gs minimal GS/OS 6
+boot disk, itself made by that repository's `scripts/make-boot-disk.js`) is copied, its volume is
+renamed `ALTEREGO`, the application is added as `/SYSTEM/START` and `dist/README.TXT` as a ProDOS
+text file at the root:
 
 ```powershell
 cd iigs
+npm run make:boot
+```
+
+`make:boot` first builds the copy the disk needs: `node build.js --exitscreen` in
+`src/games/alterego/` publishes **`build/AlterEgoGS.exit`** (gitignored), which unlike the default
+`build/AlterEgoGS` ends the game on **Q → Y** with a screen that says so, instead of quitting to a
+Finder this disk does not have.  The flag generates `src/games/alterego/QuitMode.s`
+(`QUIT_EXITSCREEN equ 1`) and the quit screen (`QuitScreen.s`) before Merlin runs, so a boot image can
+never be packed from a copy that quits — see "Quitting" below.
+
+The script checks the catalogue before it finishes (`Start` must be `S16` in `/SYSTEM`, `README.TXT`
+must be a `$B0` file at the root, the volume must still report 1,600 blocks), because Cadius reports
+`ADDFILE` failures but exits 0.
+
+The 3.5 MB full image is a plain ProDOS 8 volume, so the application can also be replaced in place
+there:
+
+```powershell
 New-Item -ItemType Directory tmp\repackage -Force | Out-Null
 Copy-Item build\AlterEgoGS 'tmp\repackage\AlterEgoGS.S16#B3DB03' -Force
-& C:\dev\cadius.exe REPLACEFILE build\AlterEgo.2mg /ALTEREGO 'tmp\repackage\AlterEgoGS.S16#B3DB03'
+& C:\dev\cadius.exe REPLACEFILE build\AlterEgo-full.2mg /ALTEREGO 'tmp\repackage\AlterEgoGS.S16#B3DB03'
 ```
 
-The image in `build/` is a build artifact as well as the reference image, so replace it deliberately.
+Cadius takes the ProDOS type from the `#B3DB03` suffix: staging the file as plain `AlterEgoGS.S16`
+replaces it as `UNK $0000` and the image will not launch.  Use `REPLACEFILE` (not `ADDFILE`) and
+confirm with `CATALOG` that the entry still reads `S16 $DB03`.
 
-## Release images: `.2mg` and `.po`
+## Release: `iigs-v0.0.2` — two `.2mg` disks
 
-The **IIgs release is the `.2mg`** (`build/AlterEgo.2mg`, tracked): a 64-byte `2IMG` header followed
-by the ProDOS blocks in ProDOS order (`format = 1`).  An emulator that wants the bare volume instead
-takes the same blocks as a **`.po`** — `make:po` writes it and converts nothing:
+The port is published as tag **`iigs-v0.0.2`**
+(<https://github.com/anomixer/alter-ego/releases/tag/iigs-v0.0.2>), with the two images below as its
+assets — byte for byte the files the tag holds, so an asset and a checkout cannot drift.  To try it
+without installing an emulator, 👉 **[PLAY HERE](https://a2gsemu-ia.pages.dev/?lang=en&game=https%3A%2F%2Fgithub.com%2Fanomixer%2Falter-ego)**
+(a2gsemu-ia boots the released `AlterEgo.2mg` from the repository).  Two images
+are tracked in `build/`:
 
-```powershell
-cd iigs
-npm run make:po
-```
+- **`build/AlterEgo.2mg` — 819,264 bytes (a 64-byte 2IMG header plus 1,600 blocks = 800 KiB).**  The
+  release image: a minimal GS/OS 6 boot disk (ProDOS 8 + `START.GS.OS` + `GS.OS` + the two drivers,
+  two FSTs and the four `System.Setup` files — 478 blocks) with the volume renamed `ALTEREGO`, the
+  game as `/SYSTEM/START` (613 blocks) and `README.TXT` (the keys, as a ProDOS text file).  GS/OS
+  launches `/SYSTEM/START` at boot, so there is **no Finder and no desktop**: the game comes up by
+  itself.  495 blocks (247 KiB) are free.  Built by `npm run make:boot`.
+- **`build/AlterEgo-full.2mg` — 3,670,080 bytes (3.5 MB, 7,168 blocks).**  The same game on a full
+  System 6 volume (`/ALTEREGO/AlterEgoGS.S16`, started by `Start.Data`), which boots to the Finder
+  desktop and works as an ordinary GS/OS disk.  It is the 10 MB volume the port used to ship, trimmed
+  as described below.
 
-It prints, for the shipped image:
+`npm run test` and `emu/gsplus-alterego.kegs` use `build/AlterEgo.2mg`, the 800 KiB disk.
 
-```
-image : C:\dev\alter-ego\iigs\build\AlterEgo.2mg (10485824 bytes, 2IMG header 64)
-po    : C:\dev\alter-ego\iigs\build\AlterEgo.po (10485760 bytes, 20480 ProDOS blocks, SHA256 ...)
-```
+### Quitting
 
-- The `.po` is the same 10 MB ProDOS 8 volume (`ALTEREGO`) the `.2mg` holds, so it boots exactly as
-  the `.2mg` does: verified by pointing GSplus `s7d1` at `build/AlterEgo.po` — title after about
-  12 s, Level 1 on the first Return ("HELLO WORLD"), at `Limit: 16.0Mhz`.
-- `HDV` is this same file under the Apple II / IIe hard-disk name; the IIgs release is `.2mg`/`.po`,
-  so no HDV is shipped here.
+**Q** (in game, or on the pause menu) asks "QUIT GAME?" and **Y** confirms.  What Y does depends on
+the disk, and the build is what decides it:
+
+- on the **800 KiB boot disk** there is no Finder and no desktop, so Y **ends the game for good**: it
+  saves the preferences, shuts the runtime down and leaves a Super Hi-Res screen that says the game
+  has exited and that it is safe to turn the machine off.  Nothing on the disk can bring the game
+  back, so only the **reset button** starts it again.  (Quitting to GS/OS there used to stop the
+  machine on `Can't run next application. Error=$1E06`, because GS/OS had no next application to
+  run.)  EXIT GAME in the pause menu still returns to the title screen.
+- on a **full System 6 volume** (Finder, desktop) Y shuts down and returns to the Finder, as a GS/OS
+  application should.
+
+The exit screen is a 320×200 bitmap rendered at build time from the game's own NES font
+(`scripts/make-quit-screen.mjs` → `QuitScreen.s`, 5,120 bytes of text bands); `QuitToExitScreen` in
+`Main.s` loads a black/white palette, clears the screen and copies them.  A 40-column text screen was
+tried first and abandoned: on this machine the legacy text page reads back with an offset and stride
+that do not match a plain 40×24 Apple II page, and none of the soft switches changed it (the whole
+negative result is in `AGENTS.md`, 2026-11-04d).
+
+`make:boot` builds the first behaviour itself (`node build.js --exitscreen` →
+`build/AlterEgoGS.exit`, gitignored); `npm run build:alterego` builds the second (`build/AlterEgoGS`,
+the copy installed on the full volume).  `node build.js --boot` still builds the "save and restart"
+variant, but no shipped image uses it.
+
+A **`.po`** is **not** part of the release.  `npm run make:po` still derives `build/AlterEgo.po` (the
+same 800 KiB volume with the 64-byte 2IMG header stripped — 819,200 bytes, 1,600 ProDOS blocks) for an
+emulator that takes a bare ProDOS-order image, and it boots exactly like the `.2mg` it came from, but
+the published assets are the two `.2mg` files.  The `.po` is generated and **not committed** (the
+`build/` allowlist tracks the two `.2mg` images and `AlterEgoGS`), so the `.2mg` stays the source of
+truth.
+
+- Boot time: the 800 KiB disk reaches the title in about **10 s** at 16 MHz (`npm run test`: 9.9 s;
+  the 3.5 MB full volume takes 12.2 s, because GS/OS loads the whole System 6 and the Finder).
+- The two extra files the boot disk needs are part of the template, not of this port: `dist/GSBoot.2mg`
+  is the silky-gs distribution's minimal boot set, and `dist/README.TXT` is this port's key sheet.
+- `HDV` is the same image under the Apple II / IIe hard-disk name; the IIgs release is `.2mg`, so no HDV
+  is shipped here.
 - Boot at **≥ 7.1 MHz**, ideally 16 MHz.  At the factory 2.8 MHz setting the port falls back to its
   2.8 MHz cadence (about 30 fps, 2–3 minute boot) — playable, but not what the release documents;
   see "Speed baseline" above.
-- `build/AlterEgo.po` is generated and **not committed** (the `build/` allowlist tracks only the
-  `.2mg` and `AlterEgoGS`): the `.2mg` stays the source of truth, and the `.po` is one
-  `npm run make:po` away from it.
+
+### Why the full volume is trimmed
+
+The 3.5 MB image is **trimmed**: System 6 plus `/ALTEREGO/AlterEgoGS.S16` use 6,439 of the 20,480
+blocks in the 10 MB volume the port used to ship, so `npm run trim` (`scripts/trim-2mg.mjs`, with the
+image path as an argument) rewrites the same volume into the smallest 0.5 MiB multiple that holds
+every allocated block — 7,168 blocks, 3,670,080 bytes, down from 10,485,824.  It patches only the
+total-blocks word in the volume header, the bitmap bits past the new end and the 2IMG block count, so
+file data, forks and GS/OS extended entries stay byte-identical.  The three old bitmap blocks it
+leaves allocated are the only `cadius CHECKVOLUME` remark.
 
 ## Run in GSplus
 
@@ -202,10 +276,10 @@ the emulator dies:
 
 ```
 Alter Ego / Apple IIgs smoke test
-  image : C:\dev\alter-ego\build\AlterEgo.2mg (10485824 bytes)
+  image : C:\dev\alter-ego\iigs\build\AlterEgo.2mg (819264 bytes)
   emu   : C:\dev\emu\GSplus\gsplus.exe
   shots : C:\dev\alter-ego\iigs\tmp\test
-  title : after 12.1s (grey 24, orange 3132, teal 28)
+  title : after 9.9s (grey 24, orange 3132, teal 28)
   level : after 2.3s (grey 9192, teal 4688, orange 9260)
 PASS
 ```
@@ -218,8 +292,9 @@ PASS
   inspection; `--boot-timeout <s>` (default 180) and `--level-timeout <s>` (default 120) widen the
   windows for a slow build.  `AE_GS_GSPLUS` overrides the emulator path.
 - It uses the image already in `build/`; it does not rebuild or repackage it.  `npm run
-  build:alterego` (Merlin32 + Cadius, from `src/games/alterego/`) and the `REPLACEFILE` recipe above
-  produce the image the test checks.
+  build:alterego` (Merlin32 + Cadius, from `src/games/alterego/`) followed by `npm run make:boot`
+  (for the 800 KiB boot disk) or the `REPLACEFILE` recipe above (for the full volume) produces the
+  image the test checks.
 
 ## Controls
 

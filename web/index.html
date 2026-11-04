@@ -1,0 +1,70 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Alter Ego — play in your browser</title>
+<style>
+  :root { color-scheme: dark; }
+  html, body { margin: 0; min-height: 100%; background: #0b0b10; color: #d8d8e0;
+    font: 15px/1.6 "Segoe UI", system-ui, sans-serif; }
+  body { min-height: 100vh; display: flex; flex-direction: column; align-items: center;
+    justify-content: center; gap: 26px; padding: 32px 20px; box-sizing: border-box; }
+  header { text-align: center; }
+  /* The heading is the game's own title-screen mark (web/assets/alter-ego-logo.png,
+     cut from the NES title by web/nes/make-logo.mjs), so it is an image with an
+     alt text, sized in CSS and kept crisp with image-rendering: pixelated. */
+  h1 { margin: 0 0 12px; line-height: 0; }
+  /* 412 px is exactly 2x the 206 px art, so every source pixel gets the same
+     size on screen; 84vw keeps it inside narrow windows (and at 2x DPR it is 4x). */
+  h1 img { width: min(412px, 84vw); height: auto; image-rendering: pixelated; }
+  .sub { color: #8b8b9a; font-size: 13px; max-width: 640px; }
+  .cards { display: grid; gap: 14px; width: min(880px, 100%);
+    grid-template-columns: repeat(auto-fit, minmax(250px, 1fr)); }
+  a.card { display: block; padding: 18px 20px; border: 1px solid #26263a; border-radius: 8px;
+    background: #12121a; color: inherit; text-decoration: none; transition: border-color .15s; }
+  a.card:hover, a.card:focus-visible { border-color: #4a4a80; }
+  .card h2 { margin: 0 0 4px; font-size: 16px; font-weight: 600; }
+  .card .tag { color: #8f8fff; font-size: 11px; letter-spacing: .1em; text-transform: uppercase; }
+  .card p { margin: 8px 0 0; color: #9a9aac; font-size: 12.5px; }
+  footer { color: #5d5d70; font-size: 11.5px; text-align: center; }
+  a { color: #8f8fff; text-decoration: none; }
+  a:hover, a:focus-visible { text-decoration: underline; }
+  code { font: 11.5px ui-monospace, monospace; color: #b8b8c8; }
+</style>
+</head>
+<body>
+  <header>
+    <h1><img src="assets/alter-ego-logo.png" alt="ALTER EGO" width="206" height="39"></h1>
+    <div class="sub">Denis Gratschev's 2011 ZX Spectrum game, its NES conversion, and the Apple II ports
+      made here. Pick a machine — everything below runs in the browser.</div>
+  </header>
+
+  <div class="cards">
+    <a class="card" href="nes/index.html">
+      <div class="tag">NES original</div>
+      <h2>👉 PLAY HERE</h2>
+      <p>The NES game through jsnes, with the ROM compiled from this repository's <code>src/</code>
+        at build time. Keyboard, on-screen pad and gamepad-friendly controls.</p>
+    </a>
+    <a class="card" href="https://a2gsemu-ia.pages.dev/?lang=en&amp;game=https%3A%2F%2Fgithub.com%2Fanomixer%2Falter-ego">
+      <div class="tag">Apple IIgs</div>
+      <h2>👉 PLAY HERE</h2>
+      <p>The IIgs port on the silky-gs runtime, booted from the released 800 KiB disk by
+        a2gsemu-ia. Q, then Y ends the game on its exit screen.</p>
+    </a>
+    <a class="card" href="https://anomixer.github.io/apple2ts/?slot2=vera&amp;tab=vera#https://raw.githubusercontent.com/anomixer/alter-ego/master/vera/build/alter-ego-vera.hdv">
+      <div class="tag">Apple //e + VERA</div>
+      <h2>👉 PLAY HERE</h2>
+      <p>The VERA port in Apple2TS, streaming <code>vera/build/alter-ego-vera.hdv</code> straight
+        from this repository.</p>
+    </a>
+  </div>
+
+  <footer>
+    <a href="https://github.com/anomixer/alter-ego">Source on GitHub</a> ·
+    <a href="https://github.com/anomixer/alter-ego/releases">Releases</a> ·
+    no NES ROM is shipped: it is compiled from <code>src/</code> when this site is built.
+  </footer>
+</body>
+</html>

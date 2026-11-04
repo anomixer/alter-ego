@@ -10,9 +10,25 @@
     font: 14px/1.5 "Segoe UI", system-ui, sans-serif; }
   body { min-height: 100vh; display: flex; flex-direction: column; align-items: center;
     justify-content: center; gap: 14px; padding: 24px; box-sizing: border-box; overflow: auto; }
-  header { text-align: center; }
-  h1 { margin: 0 0 2px; font-size: 18px; font-weight: 600; letter-spacing: .06em; }
+  /* The header spans the stage, so the port links end exactly at the emulator's
+     right edge instead of running out past it. */
+  header { display: flex; align-items: flex-end; justify-content: space-between; gap: 12px 20px;
+    flex-wrap: wrap; width: min(768px, 100%); }
+  h1 { margin: 0 0 2px; font-size: clamp(26px, 4.2vw, 36px); line-height: 1.05; font-weight: 600;
+    letter-spacing: .14em; }
   .sub { color: #8b8b9a; font-size: 12px; }
+  .ports { display: flex; align-items: center; gap: 8px; margin-left: auto; flex-wrap: wrap;
+    justify-content: flex-end; padding-bottom: 2px; }
+  .ports a { display: inline-flex; align-items: center; gap: 6px; height: 30px; padding: 0 11px;
+    box-sizing: border-box; border: 1px solid #34344a; border-radius: 999px; background: #16161f;
+    color: #d8d8e0; font-size: 12px; text-decoration: none; white-space: nowrap; }
+  .ports a:hover, .ports a:focus-visible { background: #24243a; border-color: #4a4a80;
+    text-decoration: none; }
+  .ports .play { color: #8f8fff; font-size: 9px; line-height: 1; }
+  .ports a.icon { width: 30px; padding: 0; justify-content: center; border-radius: 50%;
+    color: #9a9aac; }
+  .ports a.icon:hover, .ports a.icon:focus-visible { color: #d8d8e0; }
+  .ports svg { width: 17px; height: 17px; fill: currentColor; }
   /* flex: none keeps the 256:240 box from being squashed by the column layout
      (that squashing used to leave a black band on the right of the canvas). */
   #stage { position: relative; flex: none; width: min(768px, 100%); aspect-ratio: 256 / 240;
@@ -54,8 +70,21 @@
 </head>
 <body>
   <header>
-    <h1>ALTER EGO</h1>
-    <div class="sub">NES original, playable in the browser (<a href="https://github.com/bfirsh/jsnes" target="_blank" rel="noopener noreferrer">jsnes 2.1.0</a>)</div>
+    <div class="brand">
+      <h1>ALTER EGO</h1>
+      <div class="sub">NES original, playable in the browser (<a href="https://github.com/bfirsh/jsnes" target="_blank" rel="noopener noreferrer">jsnes 2.1.0</a>)</div>
+    </div>
+    <nav class="ports" aria-label="Other ports and source">
+      <a href="https://anomixer.github.io/apple2ts/?slot2=vera&amp;tab=vera#https://raw.githubusercontent.com/anomixer/alter-ego/master/vera/build/alter-ego-vera.hdv"
+         title="Play the Apple II / IIe VERA port in Apple2TS" target="_blank" rel="noopener noreferrer">
+        <span class="play" aria-hidden="true">&#9654;</span>Apple II VERA</a>
+      <a href="https://a2gsemu-ia.pages.dev/?lang=en&amp;game=https%3A%2F%2Fgithub.com%2Fanomixer%2Falter-ego"
+         title="Play the Apple IIgs port in a2gsemu-ia" target="_blank" rel="noopener noreferrer">
+        <span class="play" aria-hidden="true">&#9654;</span>Apple IIgs</a>
+      <a class="icon" href="https://github.com/anomixer/alter-ego" title="Source on GitHub"
+         aria-label="Source on GitHub" target="_blank" rel="noopener noreferrer">
+        <svg viewBox="0 0 16 16" aria-hidden="true"><path d="M8 0C3.58 0 0 3.58 0 8c0 3.54 2.29 6.53 5.47 7.59.4.07.55-.17.55-.38 0-.19-.01-.82-.01-1.49-2.01.37-2.53-.49-2.69-.94-.09-.23-.48-.94-.82-1.13-.28-.15-.68-.52-.01-.53.63-.01 1.08.58 1.23.82.72 1.21 1.87.87 2.33.66.07-.52.28-.87.51-1.07-1.78-.2-3.64-.89-3.64-3.95 0-.87.31-1.59.82-2.15-.08-.2-.36-1.02.08-2.12 0 0 .67-.21 2.2.82.64-.18 1.32-.27 2-.27s1.36.09 2 .27c1.53-1.04 2.2-.82 2.2-.82.44 1.1.16 1.92.08 2.12.51.56.82 1.27.82 2.15 0 3.07-1.87 3.75-3.65 3.95.29.25.54.73.54 1.48 0 1.07-.01 1.93-.01 2.2 0 .21.15.46.55.38A8.01 8.01 0 0 0 16 8c0-4.42-3.58-8-8-8z"/></svg></a>
+    </nav>
   </header>
 
   <div id="stage">
@@ -101,7 +130,7 @@
   <footer>
     Cold boot plays the original NES credits first (English, as on the cartridge); press
     <kbd>Space</kbd> to skip to the title.<br>
-    No ROM is shipped: <code>build-rom.mjs</code> compiles <code>src/</code> locally and embeds the result.
+    No ROM is shipped: <code>build-rom.mjs</code> compiles <code>src/</code> when this site is built and embeds the result.
     Emulator: <a href="https://github.com/bfirsh/jsnes" target="_blank" rel="noopener noreferrer">jsnes 2.1.0</a> (Apache-2.0).
   </footer>
 
