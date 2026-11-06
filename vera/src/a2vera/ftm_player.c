@@ -251,16 +251,38 @@ void __fastcall__ music_start_impl(uint8_t song)
     }
 }
 
-/* The optimized envelope engine gives about 40 game iterations/second.
- * Alternate one/two source ticks for level music. Title and sound-test BGM 00
- * run once per VSYNC with the original seven-tick FamiTone row speed. */
+/* The optimized envelope engine gives about 40 game iterations/second on the
+ * Apple II, so level music there alternates one/two source ticks. Title and
+ * sound-test BGM 00 run once per VSYNC with the original seven-tick FamiTone
+ * row speed.
+ *
+ * The X16 build is VSYNC-locked at 60 iterations/second, so it needs exactly
+ * one source tick per iteration for every song; the 1.5-tick schedule would
+ * play level themes 50% too fast there. */
 void music_tick_impl(void)
 {
     if (!active || paused) return;
+#if defined(VERA_X16)
+    {
+        /* The X16 loop is VSYNC-locked at 60 iterations/second, so one source
+         * tick per iteration is the NES tempo.  AE_X16_TEMPO_TRIM adds a
+         * fraction of an extra tick per frame (units of 1/256, 0 = exact
+         * 60 Hz) so the tempo can be trimmed by ear; the 8-bit accumulator
+         * fires the extra tick when it wraps, so there is no long-term drift. */
+        static uint8_t tempo_acc;
+# ifndef AE_X16_TEMPO_TRIM
+#  define AE_X16_TEMPO_TRIM 8
+# endif
+        ftm_player_tick();
+        tempo_acc=(uint8_t)(tempo_acc+AE_X16_TEMPO_TRIM);
+        if (tempo_acc<AE_X16_TEMPO_TRIM) ftm_player_tick();
+    }
+#else
     ftm_player_tick();
     if (tick_mode==1 && (++tick_fraction&1)) {
         ftm_player_tick();
     }
+#endif
     render_music();
 }
 /* Sound test runs at VSYNC rate, so it needs exactly one source tick. */

@@ -1,2 +1,6 @@
 target
+x16/spike/work/
+__pycache__/
 
+# The pinned WebAssembly emulator release fetched by web/build-site.mjs
+web/x16/build-cache/

@@ -1,13 +1,19 @@
 #!/usr/bin/env python3
 """Convert a source NES full-screen RLE nametable for the VERA tile layer."""
 from pathlib import Path
+import os
 import re
 import sys
 
 import a2vera_title as V
 
 ROOT = Path(__file__).resolve().parents[2]
-OUT = ROOT / "vera/build"
+OUT = Path(os.environ.get("AE2VERA_ART_OUT") or (ROOT / "vera/build"))
+# The credits screen names the target platform.  Default is the Apple II VERA
+# release; the Commander X16 build sets AE2VERA_CREDITS_PLATFORM='COMMANDER X16'
+# and writes to its own directory so vera/build stays byte-identical.
+PLATFORM = os.environ.get("AE2VERA_CREDITS_PLATFORM", "APPLE II VERA")
+
 
 
 def palette_array(name):
@@ -38,7 +44,7 @@ def convert(header, palette_name, stem):
         font.update({chr(87+i): 0x7A+i for i in range(4)})
         font.update({str(i): 0xF0+i for i in range(10)})
         font[' '] = 0
-        for y, line, bank in ((24, 'APPLE II VERA CONVERSION BY', 3),
+        for y, line, bank in ((24, f'{PLATFORM} CONVERSION BY', 3),
                               (26, 'ANOMIXER 2026', 1)):
             x = 3  # Match the left edge of every upstream credit line.
             for i, ch in enumerate(line):
@@ -97,6 +103,10 @@ def convert(header, palette_name, stem):
 
 
 if __name__ == "__main__":
-    convert("credits.h", "palTitleBG", "credits")
-    convert("welldone.h", "palWellDone", "ending")
-    convert("gameover.h", "palGameBG1", "gameover")
+    which = sys.argv[1] if len(sys.argv) > 1 else "all"
+    if which in ("all", "credits"):
+        convert("credits.h", "palTitleBG", "credits")
+    if which in ("all", "ending"):
+        convert("welldone.h", "palWellDone", "ending")
+    if which in ("all", "gameover"):
+        convert("gameover.h", "palGameBG1", "gameover")

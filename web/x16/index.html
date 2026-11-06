@@ -1,0 +1,85 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Alter Ego — Commander X16</title>
+<link rel="icon" href="data:,">
+<link rel="stylesheet" href="style.css">
+</head>
+<body>
+<header class="topbar">
+  <a class="back" href="../index.html">← Alter Ego</a>
+  <span class="tag">Commander X16 · the port running on the official WebAssembly emulator</span>
+</header>
+
+<main>
+  <section id="screen">
+    <canvas id="canvas" width="640" height="480" tabindex="0" aria-label="Commander X16 screen"></canvas>
+    <div id="boot">
+      <h1>ALTER EGO</h1>
+      <p>The Commander X16 port boots the real X16 KERNAL and LOADER.PRG in your
+        browser: title menu, all 26 levels, the exchange, the pause menu and the
+        in-game music.</p>
+      <button id="play" type="button">▶ Boot the X16</button>
+      <p class="hint">Arrows move · <kbd>Z</kbd>/<kbd>X</kbd> exchange · <kbd>Enter</kbd>
+        start/pause · <kbd>1</kbd> select · <kbd>T</kbd> sound test · <kbd>M</kbd>/<kbd>N</kbd> mutes</p>
+      <p class="err" id="bootError" hidden></p>
+    </div>
+    <div id="error" hidden></div>
+  </section>
+
+  <div class="bar">
+    <span id="status" role="status">Ready. Click “Boot the X16”.</span>
+    <span class="buttons">
+      <button id="sound" type="button" disabled>Sound off</button>
+      <button id="fullscreen" type="button" disabled>Fullscreen</button>
+      <button id="restart" type="button" disabled>Restart</button>
+    </span>
+  </div>
+
+  <details class="notes">
+    <summary>What this is, the controls, and the notices</summary>
+
+    <h2>What you are running</h2>
+    <p>The real Commander X16 binary from this repository's
+      <a href="https://github.com/anomixer/alter-ego/tree/master/x16/spike/dist">x16/spike/dist/</a>
+      — the same <code>LOADER.PRG</code>, <code>GAME</code>, <code>MUSIC</code> and 26 level
+      files you would put on an SD card — loaded into the emulator's virtual drive and
+      started with <code>-prg loader.prg -run</code>. The emulator is the official
+      <a href="https://github.com/X16Community/x16-emulator/releases/tag/r49">X16Community
+      WebAssembly release r49</a>, fetched and checksum-checked when this site is built;
+      it is not vendored in the repository.</p>
+
+    <h2>Controls (keyboard)</h2>
+    <table>
+      <tr><th>Keys</th><th>Action</th></tr>
+      <tr><td>Arrow keys</td><td>Move, climb ladders, and highlight menu rows</td></tr>
+      <tr><td><kbd>Z</kbd> / <kbd>X</kbd></td><td>Exchange with your shadow (A / B on a pad)</td></tr>
+      <tr><td><kbd>Enter</kbd> / <kbd>Space</kbd></td><td>Start, confirm, pause</td></tr>
+      <tr><td><kbd>1</kbd> / <kbd>Left&nbsp;Shift</kbd></td><td>Select (title menu: jump to the cow level)</td></tr>
+      <tr><td><kbd>T</kbd> / <kbd>Esc</kbd></td><td>SFX/BGM test screen</td></tr>
+      <tr><td><kbd>M</kbd> / <kbd>N</kbd></td><td>Music mute / sound-effects mute</td></tr>
+    </table>
+    <p>A USB gamepad works too (A = exchange, B = the other exchange button, Start = Enter,
+      Select = <kbd>1</kbd>). The emulator keeps the X16 keyboard layout
+      (<code>en-us</code>), so physical key positions are what the KERNAL sees.</p>
+
+    <h2>Notes</h2>
+    <p>Audio starts muted; use the “Sound” button (browsers require a click before they
+      allow sound). “Fullscreen” scales the 640×480 VERA screen; “Restart” reloads the page
+      and boots the X16 again. On slower machines the first boot takes a few seconds while
+      the 38 game files are copied into the emulator's memory.</p>
+
+    <h2>Licences</h2>
+    <p>The emulator is 2-clause BSD (© 2019 Michael Steil); its bundled X16 ROM mixes
+      Commodore/Microsoft-licensed KERNAL and BASIC code with BSD-licensed additions — see
+      <a href="emulator-license.txt">emulator-license.txt</a> and
+      <a href="rom-license.md">rom-license.md</a> for the exact terms. The game code and
+      assets are covered by this repository's <a href="https://github.com/anomixer/alter-ego/blob/master/LICENSE">LICENSE</a>.</p>
+  </details>
+</main>
+
+<script src="app.js"></script>
+</body>
+</html>

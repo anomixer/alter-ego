@@ -1,0 +1,4 @@
+10 REM ALTER EGO / CX16 bootstrap - replaces STARTUP.BAS from the Apple II build
+20 LOAD"MUSIC",8,1
+30 LOAD"GAME",8,1
+40 SYS 8192

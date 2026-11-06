@@ -57,11 +57,18 @@ extern uint8_t __fastcall__ oam_meta_spr(uint8_t x, uint8_t y, uint8_t id,
 extern const uint8_t title_map_rle[];
 extern const uint8_t title_screen_prompt[];
 extern const uint8_t title_screen_palette[256];
+#ifdef VERA_X16
+extern uint8_t __fastcall__ ae_midair_ok(void);
+#endif
 
-static uint8_t player_x,player_y,sync_type;
+/* Non-static so x16/spike/gate_cx16.s can read them: the mid-air exchange gate
+ * needs the position, the mirror type and collision_map.  Same size and same
+ * code on the Apple II build. */
+uint8_t player_x,player_y,sync_type;
 static uint8_t enemy_x[ENEMY_MAX],enemy_y[ENEMY_MAX];
 static uint8_t enemy_dir[ENEMY_MAX],enemy_attr[ENEMY_MAX],enemy_count;
-static uint8_t collision_map[640],items_left;
+uint8_t collision_map[640];
+static uint8_t items_left;
 static uint16_t item_map_offset[ITEM_MAX];
 #ifdef FTM_VERA
 #pragma bss-name (push, "FTM_EXTRA_BSS")
@@ -102,6 +109,11 @@ static uint8_t bridge_dropped;
 static uint8_t alter_anim_state=0xA5;
 static uint8_t exchange_left,exchange_active,exchange_x,exchange_y;
 static uint8_t exchange_input_lock;
+#ifdef VERA_X16
+/* Set when the swap was started while falling: the resumed fall has to be
+ * re-anchored to the tile grid or it can sink into the mirrored column. */
+static uint8_t exchange_midair;
+#endif
 static uint8_t player_dead,death_frames;
 static uint8_t lives_remaining=5,game_over;
 static uint8_t gameover_music_started;
@@ -119,7 +131,9 @@ static uint8_t music_muted;
 static uint8_t sound_muted,title_menu_dirty;
 static uint8_t title_code_index,level_skip;
 static uint8_t title_choice,title_level=1;
+#ifndef VERA_X16
 static uint8_t keyboard_model,keyboard_last_pad,keyboard_last_held;
+#endif
 static uint8_t keyboard_mute_down,keyboard_sound_down;
 
 #define MOVE_NONE 0
@@ -241,17 +255,37 @@ static void draw_level_clear(uint8_t visible)
     }
 }
 
+#ifdef VERA_X16
+/* The X16 KERNAL runs its whole IRQ (jiffy clock and keyboard scan) from the
+ * VERA VSYNC interrupt, so the game cannot poll VERA_ISR at the cost of
+ * disabling that interrupt: doing so stops all keyboard input.  input_cx16.s
+ * instead chains the KERNAL handler and counts VSYNCs there. */
+extern volatile unsigned char ae_irq_frames;
+static void wait_frame(void)
+{
+    unsigned char f=ae_irq_frames;
+    while (ae_irq_frames==f) {}
+}
+#else
 static void wait_frame(void)
 {
     while (!(VERA_ISR&0x01)) {}
     VERA_ISR=0x01; /* VERA IRQ status is write-one-to-clear. */
 }
+#endif
 
 static void vera_sync_init(void)
 {
+#ifdef VERA_X16
+    extern void ae_irq_install(void);
+    VERA_ISR=0x0F; /* Clear pending VERA interrupt status. */
+    VERA_IEN=0x01; /* Keep the KERNAL's VSYNC interrupt (keyboard/jiffy). */
+    ae_irq_install();
+#else
     VERA_IEN=0;
     VERA_ISR=0x0F; /* Clear pending VERA interrupt status. */
     VERA_IEN=0x01; /* Enable VSYNC status for frame pacing. */
+#endif
 }
 
 static void write_map_rle(const uint8_t *src,uint8_t base)
@@ -416,9 +450,11 @@ show_title:
     set_title_prompt(0);
     draw_title_menu();
     /* BRUN may leave a boot key latched in the Apple II keyboard register. */
+#ifndef VERA_X16
     KBDSTRB=0;
     keyboard_last_pad=0;
     keyboard_last_held=0;
+#endif
     keyboard_mute_down=0;
     keyboard_sound_down=0;
     frame_count=0;
@@ -429,9 +465,23 @@ show_title:
         ++frame_count;
         if (title_guard) {
             --title_guard;
+#ifndef VERA_X16
             if (KEYBOARD&0x80) KBDSTRB=0;
+#endif
             continue;
         }
+#ifdef AE_X16_AUTOSTART
+        /* Test-only hook (X16 build, -DAE_X16_AUTOSTART=<level>): automated
+         * x16emu captures have no way to press START, so the menu is skipped
+         * once the guard expires.  Not defined in any shipped build. */
+        {
+            extern unsigned char ae_autostart_level;
+            if (ae_autostart_level) {
+                current_level=(uint8_t)ae_autostart_level;
+                break;
+            }
+        }
+#endif
         pad=keyboard_pad();
         old_choice=title_choice;
         old_level=title_level;
@@ -463,10 +513,28 @@ show_title:
             title_map_text(digits,21,21,title_choice==1?3:0);
         }
         if (title_menu_dirty) redraw_title_audio();
-        if (new_dirs) {
-            if (keyboard_model!=1) keyboard_last_pad=0;
-        }
+#ifndef VERA_X16
+        if (new_dirs && keyboard_model!=1) keyboard_last_pad=0;
+#endif
         last_dirs=dirs;
+#ifdef VERA_X16
+        /* X16 A/B are level-sensitive, so "pad == code[i]" would cancel the
+         * skip-code on the second frame of the same press.  Match each new pad
+         * value once, so the code can be typed with ordinary taps. */
+        {
+            static uint8_t code_last_pad;
+            if (pad && pad!=code_last_pad) {
+                if (pad==code[title_code_index]) {
+                    if (++title_code_index==6) {
+                        title_code_index=0;
+                        level_skip=1;
+                        sfx_start(1);
+                    }
+                } else title_code_index=0;
+            }
+            code_last_pad=pad;
+        }
+#else
         if (pad) {
             if (pad==code[title_code_index]) {
                 if (++title_code_index==6) {
@@ -476,6 +544,24 @@ show_title:
                 }
             } else title_code_index=0;
         }
+#endif
+#ifdef AE_DEBUG_PAD
+        {
+            /* Temporary porting aid: beacon the raw pad every frame. */
+            *(volatile unsigned char *) 0x9FB9 = pad;
+        }
+#endif
+#ifdef AE_DEBUG_TITLE
+        {
+            /* Temporary porting aid: beacon pad/level_skip from the title loop. */
+            static unsigned char acc3;
+            if (++acc3==6) {
+                acc3=0;
+                *(volatile unsigned char *) 0x9FB9 = pad;
+                *(volatile unsigned char *) 0x9FB9 = level_skip;
+            }
+        }
+#endif
         if (pad&PAD_SELECT) current_level=0; /* source cow level */
         if (pad&PAD_START) {
             sound_test=(uint8_t)((pad&(PAD_A|PAD_B))==(PAD_A|PAD_B));
@@ -549,11 +635,23 @@ static void sound_test_screen(void)
     static const uint8_t song_map[8]={0,1,3,4,5,6,7,8};
     const uint8_t song_count=8;
 #endif
-    uint8_t mode=0,effect=0,song=0,pad,key,playing_title=0;
+    uint8_t mode=0,effect=0,song=0,pad,playing_title=0;
     uint8_t shown_mode=255,shown_effect=255,shown_song=255;
-    uint8_t exit_armed=(uint8_t)(keyboard_model!=1);
+#ifndef VERA_X16
+    /* The Apple II keeps its own exit latch below; X16 uses ae_key_t instead. */
+    uint8_t key,exit_armed=(uint8_t)(keyboard_model!=1);
+#endif
     pause_last_dirs=0;
+#ifndef VERA_X16
     KBDSTRB=0;
+#endif
+#ifdef VERA_X16
+    {
+        /* Drop the T that opened this screen; it must not close it at once. */
+        extern unsigned char ae_key_t;
+        ae_key_t=0;
+    }
+#endif
     for (;;) {
         wait_frame();
 #ifdef FTM_VERA
@@ -563,9 +661,18 @@ static void sound_test_screen(void)
         music_tick();
 #endif
         sfx_tick();
+#ifdef VERA_X16
+        {
+            /* T (or Escape) leaves the selector.  The X16 path cannot use the
+             * $C000 keyboard latch that the Apple II code polls. */
+            extern unsigned char ae_key_t;
+            if (ae_key_t) { ae_key_t=0; break; }
+        }
+#endif
         /* Do not let the T key that opened the selector close it again.
          * On a IIe, wait for key release before accepting a new T/Escape. */
         pad=0;
+#ifndef VERA_X16
         if (!exit_armed && !(KBDSTRB&0x80)) exit_armed=1;
         if (exit_armed) {
             key=KEYBOARD;
@@ -578,6 +685,9 @@ static void sound_test_screen(void)
             }
             pad=sound_test_edge(keyboard_pad());
         }
+#else
+        pad=sound_test_edge(keyboard_pad());
+#endif
         if (pad&PAD_LEFT) mode=0;
         if (pad&PAD_RIGHT) mode=1;
         if (pad&PAD_UP) {
@@ -791,6 +901,7 @@ static uint8_t check_tile_actions(uint8_t pad)
     return 0;
 }
 
+
 static uint8_t advance_player_exchange(void)
 {
     if (!exchange_active) return 0;
@@ -812,6 +923,19 @@ static uint8_t advance_player_exchange(void)
     if (player_x==exchange_x && player_y==exchange_y) {
         exchange_active=0;
         exchange_input_lock=1;
+#ifdef VERA_X16
+        if (exchange_midair) {
+            /* The swap froze the fall part-way through a step, so the leftover
+             * player_fall_steps would keep moving the Ego down in the mirrored
+             * column without testing the floor there - it could end up inside a
+             * platform tile and then fall straight through it.  Land on the
+             * tile row the fall was in and let the normal gravity test decide. */
+            exchange_midair=0;
+            player_y=(uint8_t)(player_y&0xF8);
+            player_fall_steps=0;
+        }
+
+#endif
         player_ladder_pose=(uint8_t)((check_map(player_x,player_y)&TILE_LADDER)!=0);
         player_is_falling=0;
         player_walk_tile=0x91;
@@ -908,6 +1032,9 @@ static void load_level_entities(void)
     eye_state=255;
     exchange_active=0;
     exchange_input_lock=0;
+#ifdef VERA_X16
+    exchange_midair=0;
+#endif
     player_dead=0;
     death_frames=0;
     level_clear_timer=0;
@@ -944,7 +1071,9 @@ static uint8_t load_level_file(uint8_t level)
     uint16_t j;
     uint16_t encoded,remaining=0,pos=0,len=0,out=0;
     int fd;
+#ifndef VERA_X16
     keyboard_level_reset();
+#endif
     filename[2]=(char)('0'+level/10);
     filename[3]=(char)('0'+level%10);
     fd=open(filename,O_RDONLY);
@@ -1025,6 +1154,18 @@ static void restart_level(void)
     vera_oam_present();
 }
 
+#ifdef VERA_X16
+/* The X16 build has no POSIX file stream that works on HostFS, so assets go
+ * through the KERNAL LOAD wrapper in asset_cx16.c instead. */
+extern unsigned char ae_load_raw_asset(const char *name,unsigned address,
+                                       unsigned char high,unsigned size);
+
+static uint8_t load_raw_asset(const char *name,uint16_t address,uint8_t high,
+                              uint16_t size)
+{
+    return ae_load_raw_asset(name,(unsigned)address,high,(unsigned)size);
+}
+#else
 static uint8_t load_raw_asset(const char *name,uint16_t address,uint8_t high,
                               uint16_t size)
 {
@@ -1048,6 +1189,7 @@ static uint8_t load_raw_asset(const char *name,uint16_t address,uint8_t high,
     close(fd);
     return 1;
 }
+#endif
 
 static void credits_screen(void)
 {
@@ -1061,7 +1203,9 @@ static void credits_screen(void)
     VERA_L0_MAP=0x10;
     VERA_DC_VID=0x51;
     credits_visible=1;
+#ifndef VERA_X16
     KBDSTRB=0;
+#endif
     /* Keep the NES intro's 150-frame hold; Start can skip to the title. */
     for (frames=150; frames; --frames) {
         wait_frame();
@@ -1409,6 +1553,35 @@ static void advance_enemies(void)
 static uint8_t keyboard_pad(void)
 {
     uint8_t pad=0,held,joy=joystick_pad();
+#ifdef VERA_X16
+    /* The X16 has no Apple II keyboard latch at $C000/$C010.  input_cx16.s
+     * already merges the KERNAL keyboard-joystick (arrows, Enter as START,
+     * Z/X as A/B) into joystick_pad(), so that is the whole gamepad state.
+     * The Apple II-only keys that need raw characters (M/N mute shortcuts,
+     * T for the sound test) arrive as one-frame flags from the same layer. */
+    {
+        extern unsigned char ae_key_m, ae_key_n;
+        if (ae_key_m) {
+            if (!keyboard_mute_down) {
+                music_muted^=1;
+                music_mute(music_muted);
+                title_menu_dirty=1;
+                keyboard_mute_down=1;
+            }
+        } else keyboard_mute_down=0;
+        if (ae_key_n) {
+            if (!keyboard_sound_down) {
+                sound_muted^=1;
+                sfx_mute(sound_muted);
+                title_menu_dirty=1;
+                keyboard_sound_down=1;
+            }
+        } else keyboard_sound_down=0;
+    }
+    (void) pad;
+    (void) held;
+    return joy;
+#else
     uint8_t ch=KEYBOARD;
     /* $C010 bit 7 is the IIe any-key-down flag. On II+ it is floating bus. */
     if (!keyboard_model)
@@ -1467,11 +1640,13 @@ static uint8_t keyboard_pad(void)
         keyboard_last_pad=0;
     keyboard_last_held=held;
     return joy|(ch?0:pad);
+#endif /* VERA_X16 */
 }
 
 /* A II+ key latch survives level transitions unless $C010 is accessed. Clear
  * it for the new level while keeping the II+ game's last direction active
  * until another key is pressed. IIe reads its true held-key flag instead. */
+#ifndef VERA_X16
 static void keyboard_level_reset(void)
 {
     KBDSTRB=0;
@@ -1480,11 +1655,12 @@ static void keyboard_level_reset(void)
     keyboard_mute_down=0;
     keyboard_sound_down=0;
 }
+#endif
 
 void main(void)
 {
     uint8_t pad,falling,was_falling,collected,logic_delta,logic_step;
-#ifdef FTM_VERA
+#if defined(FTM_VERA) && !defined(VERA_X16)
     static uint8_t ftm_rate_phase;
 #endif
     vera_oam_init();
@@ -1558,13 +1734,17 @@ void main(void)
             else if (!pause_move_cooldown && (new_dirs&PAD_UP) && pause_choice) {
                 --pause_choice; pause_frames=0; pause_move_cooldown=10; sfx_start(1);
                 redraw=1;
+#ifndef VERA_X16
                 if (keyboard_model!=1) keyboard_last_pad=0;
+#endif
             }
             else if (!pause_move_cooldown && (new_dirs&PAD_DOWN) &&
                      pause_choice<(lives_remaining?2:1)) {
                 ++pause_choice; pause_frames=0; pause_move_cooldown=10; sfx_start(1);
                 redraw=1;
+#ifndef VERA_X16
                 if (keyboard_model!=1) keyboard_last_pad=0;
+#endif
             }
             if (pause_move_cooldown) --pause_move_cooldown;
             ++pause_frames;
@@ -1575,9 +1755,12 @@ void main(void)
             }
             continue;
         }
-        /* The live FTM player leaves about 40 game iterations per second.
-         * Alternate one and two NES-time steps to keep gameplay near 60 Hz. */
-#ifdef FTM_VERA
+        /* The Apple II FTM player leaves about 40 game iterations per second,
+         * so it alternates one and two NES-time steps to keep gameplay near
+         * 60 Hz. The X16 build is VSYNC-locked at 60 iterations per second
+         * (measured: it never skips a frame), so it advances exactly one
+         * NES-time step per iteration. */
+#if defined(FTM_VERA) && !defined(VERA_X16)
         logic_delta=(uint8_t)((++ftm_rate_phase&1)?2:1);
 #else
         logic_delta=1;
@@ -1679,6 +1862,27 @@ void main(void)
              * pickup check was skipped. Wait until the next update checks
              * the landing tile before accepting lateral movement. */
             collected=(uint8_t)(player_fall_steps!=0);
+#ifdef VERA_X16
+            /* The NES only offers the exchange on the one frame between two
+             * eight-pixel fall steps, so mid-air swapping felt like it needed
+             * mashing.  X16 checks A/B every frame of a fall instead: hold or
+             * tap the button and the swap starts at once.  Vertically mirrored
+             * levels only take it once the other Ego has a floor under it (see
+             * alter_has_footing). */
+            if (player_fall_steps && !exchange_active && !player_dead &&
+                items_left && (pad&(PAD_A|PAD_B)) && !exchange_input_lock) {
+                /* Vertically mirrored levels (sync_type != 0) put the other Ego
+                 * at 240-y, so a mid-air swap would move the Ego to the
+                 * mirrored height - straight through the platform, possibly to
+                 * a spot in mid-air under it ("falls through the floor").  Those
+                 * levels keep the original boundary-only exchange; horizontal
+                 * mirror levels swap at once, the Ego just keeps falling in the
+                 * mirrored column. */
+                if (ae_midair_ok()) begin_player_exchange();
+                if (exchange_active) exchange_midair=1;
+                collected=1;
+            }
+#endif
             if (!player_fall_steps) {
                 if (check_tile_actions(pad)) { collected=1; pad=0; }
                 if (items_left && !exchange_active &&
@@ -1732,6 +1936,27 @@ void main(void)
             advance_enemies();
         }
         if (!player_dead && !exchange_active) update_enemy_eyes();
+
+#ifdef AE_DEBUG_FALL
+        {
+            /* Temporary porting aid: one byte per frame = (player_y & $F8) |
+             * pad & $07, so pad presses can be lined up with the fall. */
+            *(volatile unsigned char *) 0x9FB9 =
+                (unsigned char)((player_y & 0xF8) | (pad & 0x07));
+        }
+#endif
+#ifdef AE_DEBUG_XY
+        {
+            /* Temporary porting aid: beacon player_x/player_y/pad to $9FB9. */
+            static unsigned char acc;
+            if (++acc==10) {
+                acc=0;
+                *(volatile unsigned char *) 0x9FB9 = player_x;
+                *(volatile unsigned char *) 0x9FB9 = player_y;
+                *(volatile unsigned char *) 0x9FB9 = pad;
+            }
+        }
+#endif
         draw_scene_sprites();
         vera_oam_present();
     }

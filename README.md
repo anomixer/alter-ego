@@ -1,4 +1,4 @@
-# Alter Ego — NES source, Apple II ports, browser player
+# Alter Ego — NES source, Apple II and Commander X16 ports, browser players
 
 This is a working fork of [avshabanov/alter-ego](https://github.com/avshabanov/alter-ego), the NES
 homebrew game Alter Ego.  The repository root mirrors upstream — the same `Makefile`, `src/`,
@@ -11,6 +11,8 @@ root file that differs from upstream.
 | [`vera/`](vera/) | Apple II / II+ / IIe with a VERA card (cc65, NMOS 6502) | `vera/build/alter-ego-vera.hdv` (FamiTone, default), `vera/build/alter-ego-vera-psg.hdv` (streamed PSG), and the FamiTone dual-floppy `-D1.po` / `-D2.po` pair |
 | [`iigs/`](iigs/) | Apple IIgs through silky-gs (65816) | [`iigs/build/AlterEgo.2mg`](iigs/build/AlterEgo.2mg) |
 | [`web/nes/`](web/nes/) | jsnes browser player for the original NES game | [`web/nes/index.html`](web/nes/index.html) — compiles the ROM from `src/`, so no binary is shipped; published to GitHub Pages by [`.github/workflows/deploy-web.yml`](.github/workflows/deploy-web.yml) |
+| [`x16/`](x16/) | Commander X16 (65C02S + VERA, cc65 `-t cx16`) | `x16/spike/dist/` — boot `LOADER.PRG` from that directory |
+| [`web/x16/`](web/x16/) | Commander X16 browser player | [`web/x16/index.html`](web/x16/index.html) — loads `x16/spike/dist/` into the official X16Community WebAssembly emulator (fetched and checksum-checked when the site is built) |
 
 Play in a browser — every target has a page:
 
@@ -19,6 +21,7 @@ Play in a browser — every target has a page:
 | NES (original) | 👉 [PLAY HERE](https://anomixer.github.io/alter-ego/nes/index.html) | the jsnes page in [`web/nes/`](web/nes/), playing the ROM compiled from `src/` when the site was built |
 | Apple IIgs | 👉 [PLAY HERE](https://a2gsemu-ia.pages.dev/?lang=en&game=https%3A%2F%2Fgithub.com%2Fanomixer%2Falter-ego) | a2gsemu-ia booting the released 800 KiB disk (tag `iigs-v0.0.2`); `Q`, then `Y`, leaves the game on its exit screen |
 | Apple //e + VERA | 👉 [PLAY HERE](https://anomixer.github.io/apple2ts/?slot2=vera&tab=vera#https://raw.githubusercontent.com/anomixer/alter-ego/master/vera/build/alter-ego-vera.hdv) | Apple2TS (our own Pages build — upstream's VERA display is broken) streaming [`vera/build/alter-ego-vera.hdv`](vera/build/alter-ego-vera.hdv) from this repository |
+| Commander X16 | 👉 [PLAY HERE](https://anomixer.github.io/alter-ego/x16/index.html) | the X16 build on the official X16Community r49 WebAssembly emulator: `LOADER.PRG` plus the 26 level files from `x16/spike/dist/` are copied into its virtual drive; the emulator release itself is downloaded and checksum-checked at build time, not vendored |
 
 
 The repository was called `alter-ego-vera` while VERA was the only target; it is now plain
@@ -406,6 +409,45 @@ WELL DONE ending are exercised in practice; the repository still has no screensh
 or of GAME OVER.  The dated log, engine constraints and open items are in
 [`iigs/AGENTS.md`](iigs/AGENTS.md).
 
+## Commander X16 port
+
+The same game sources ported to the Commander X16 with cc65's `-t cx16` target.
+[`x16/README.md`](x16/README.md) covers the build, the KERNAL LOAD boot chain,
+the controls and the memory budget (the Traditional Chinese original is
+[`x16/readme-tw.md`](x16/readme-tw.md)); [`x16/docs/PORT-CX16-EVAL.md`](x16/docs/PORT-CX16-EVAL.md)
+is the platform study and the per-fix evidence log.
+
+- Playable in x16emu (r49): title menu, all 26 level files (`LV00`–`LV25`), the
+  exchange, the in-game pause menu, the `T`/`M`/`N`/`1` keys, credits and the
+  ending screen.  `LV01`, `LV03` and `LV24` were driven end-to-end by the
+  automation script; the other levels share the same `load_level_file()`.
+- The shipped build is `x16/spike/dist/` (`GAME` 29,698 B, the `MUSIC` overlay,
+  `LOADER.PRG` and the level/asset files):
+
+```
+x16emu -prg x16/spike/dist/LOADER.PRG -run -fsroot x16/spike/dist -scale 2
+```
+
+- In the browser: <https://anomixer.github.io/alter-ego/x16/index.html> boots the same files on
+  the official X16Community r49 WebAssembly emulator.  [`web/x16/`](web/x16/) holds the page
+  and [`web/x16/assemble.mjs`](web/x16/assemble.mjs) downloads the pinned emulator archive
+  (SHA-256 checked) and copies the lower-case game files plus a `manifest.json` into the
+  site, so the published page runs the same `x16/spike/dist/` build.
+- Three gameplay bugs only showed up on the X16: the mid-air exchange had to be
+  checked every frame (was one tile boundary in eight), a swap had to snap the
+  Ego to its landing row, and vertically mirrored levels may only swap where the
+  mirror spot has a floor.  The last check did not fit in the game's RAM area, so
+  it is hand-written asm in [`x16/spike/gate_cx16.s`](x16/spike/gate_cx16.s),
+  placed in the free hole at `$92DC`.
+- The Apple II VERA image is untouched by this port: every behavioural change is
+  inside `#ifdef VERA_X16` and `vera/build/` still ships the same images.
+
+![Alter Ego title screen on the Commander X16](x16/spike/shot-title-final.png)
+
+![Alter Ego gameplay on the Commander X16](x16/spike/shot-level1-plays.png)
+
+![Alter Ego on the Commander X16, running in the browser](x16/spike/web-level1.png)
+
 ## Play the NES original in a browser
 
 👉 **[PLAY HERE](https://anomixer.github.io/alter-ego/nes/index.html)** — the page is published to
@@ -485,6 +527,17 @@ Design records and notes, grouped by port.
   details.
 - [`vera/docs/archive/apple2e/`](vera/docs/archive/apple2e/) — archived `//e` material; see
   [`IMPORT-NOTES.md`](vera/docs/archive/apple2e/IMPORT-NOTES.md) for what was dropped.
+
+**Commander X16**
+
+- [`x16/README.md`](x16/README.md) — the port: build, boot chain, controls, the mid-air exchange fixes and
+  the memory budget.
+- [`x16/readme-tw.md`](x16/readme-tw.md) — the same document in Traditional Chinese (the original the
+  English README was translated from).
+- [`x16/docs/PORT-CX16-EVAL.md`](x16/docs/PORT-CX16-EVAL.md) — the evaluation report: VERA/NES comparison,
+  reuse list, probe evidence, the per-fix verification log and the browser build.
+- [`x16/docs/PORT-CX16-EVAL-tw.md`](x16/docs/PORT-CX16-EVAL-tw.md) — the same report in Traditional Chinese
+  (the original it was translated from).
 
 ## Credits
 

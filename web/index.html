@@ -20,7 +20,10 @@
   h1 img { width: min(412px, 84vw); height: auto; image-rendering: pixelated; }
   .sub { color: #8b8b9a; font-size: 13px; max-width: 640px; }
   .cards { display: grid; gap: 14px; width: min(880px, 100%);
-    grid-template-columns: repeat(auto-fit, minmax(250px, 1fr)); }
+    grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  /* Two cards per row while there is room: the two players hosted here (NES,
+     X16) pair up, and so do the two Apple II emulators (IIgs, //e + VERA). */
+  @media (max-width: 620px) { .cards { grid-template-columns: 1fr; } }
   a.card { display: block; padding: 18px 20px; border: 1px solid #26263a; border-radius: 8px;
     background: #12121a; color: inherit; text-decoration: none; transition: border-color .15s; }
   a.card:hover, a.card:focus-visible { border-color: #4a4a80; }
@@ -46,6 +49,13 @@
       <h2>👉 PLAY HERE</h2>
       <p>The NES game through jsnes, with the ROM compiled from this repository's <code>src/</code>
         at build time. Keyboard, on-screen pad and gamepad-friendly controls.</p>
+    </a>
+    <a class="card" href="x16/index.html">
+      <div class="tag">Commander X16</div>
+      <h2>👉 PLAY HERE</h2>
+      <p>The X16 port on the official X16Community WebAssembly emulator: the same
+        <code>LOADER.PRG</code> and 26 level files from <code>x16/spike/dist/</code>, booted in
+        the browser. Keyboard and gamepad.</p>
     </a>
     <a class="card" href="https://a2gsemu-ia.pages.dev/?lang=en&amp;game=https%3A%2F%2Fgithub.com%2Fanomixer%2Falter-ego">
       <div class="tag">Apple IIgs</div>

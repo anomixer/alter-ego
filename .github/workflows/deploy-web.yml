@@ -2,7 +2,9 @@ name: Deploy the browser players to GitHub Pages
 
 # Builds the NES ROM from src/ (never committing a binary), smoke-tests it
 # headlessly, assembles web/_site and publishes it.  The site root is
-# web/index.html and the jsnes player is /nes/index.html.
+# web/index.html, the jsnes player is /nes/index.html and the Commander X16
+# player is /x16/index.html (it ships x16/spike/dist plus the checksum-pinned
+# official WebAssembly emulator, downloaded by web/x16/assemble.mjs).
 #
 # One-time repository setting: Settings -> Pages -> Build and deployment ->
 # Source: "GitHub Actions".  Without it the deploy job fails.
@@ -15,6 +17,7 @@ on:
     paths:
       - 'src/**'
       - 'web/**'
+      - 'x16/spike/dist/**'
       - '.github/workflows/deploy-web.yml'
   workflow_dispatch:
 
@@ -60,7 +63,7 @@ jobs:
       - name: Smoke-test the ROM headlessly
         run: node web/nes/test.mjs
 
-      - name: Assemble the site
+      - name: Assemble the site (downloads the pinned X16 WASM emulator)
         run: node web/build-site.mjs
 
       - name: Upload the Pages artifact

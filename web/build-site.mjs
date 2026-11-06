@@ -1,13 +1,17 @@
-// Assemble the GitHub Pages site: web/index.html at the root and the jsnes
-// player under nes/, mirroring the repository layout.
+// Assemble the GitHub Pages site: web/index.html at the root, the jsnes player
+// under nes/ and the Commander X16 player under x16/, mirroring the repository
+// layout.
 //
 //   node web/build-site.mjs                    # -> web/_site (gitignored)
 //   node web/build-site.mjs --out <dir>
 //
-// The player embeds the ROM as base64 (`nes/build/rom-base64.js`), so run
+// The NES player embeds the ROM as base64 (`nes/build/rom-base64.js`), so run
 //   node web/nes/build-rom.mjs
 // first; this script fails, rather than publishing a page that would sit on
 // "Loading…", if the generated files are missing.
+//
+// The X16 player needs `x16/spike/dist/` (built by x16/spike/build.ps1) and
+// downloads the pinned official emulator release into `x16/build-cache/`.
 //
 // Nothing outside this list is published: the repository's sources, build
 // scripts and screenshots stay off the site.
@@ -15,6 +19,7 @@
 import { copyFileSync, existsSync, mkdirSync, readFileSync, rmSync, statSync, writeFileSync } from "node:fs";
 import { dirname, join, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
+import { assembleX16 } from "./x16/assemble.mjs";
 
 const here = dirname(fileURLToPath(import.meta.url));
 
@@ -36,6 +41,12 @@ const pageFiles = [
   ["nes/audio.js", "nes/audio.js"],
   ["nes/vendor/jsnes.min.js", "nes/vendor/jsnes.min.js"],
   ["nes/NOTICE.md", "nes/NOTICE.md"],
+  ["x16/index.html", "x16/index.html"],
+  ["x16/app.js", "x16/app.js"],
+  ["x16/style.css", "x16/style.css"],
+  ["x16/NOTICE.md", "x16/NOTICE.md"],
+  ["x16/emulator-license.txt", "x16/emulator-license.txt"],
+  ["x16/rom-license.md", "x16/rom-license.md"],
 ];
 const generated = [
   ["nes/build/rom-base64.js", "nes/build/rom-base64.js"],
@@ -57,6 +68,14 @@ for (const [from, to] of [...pageFiles, ...generated]) {
   manifest.push([to, statSync(dst).size]);
 }
 
+// The X16 page ships the game files plus the checksum-pinned official WASM
+// emulator; both land under x16/emulator and x16/game.
+for (const [path, size] of await assembleX16(join(out, "x16"), {
+  cacheDir: join(here, "x16", "build-cache"),
+})) {
+  manifest.push([`x16/${path}`, size]);
+}
+
 // GitHub Pages serves the artifact as-is (no Jekyll), but .nojekyll also keeps
 // a future "deploy from a branch" configuration from stripping the vendor dir.
 writeFileSync(join(out, ".nojekyll"), "");
@@ -73,7 +92,7 @@ function localRefs(html) {
   return refs;
 }
 
-for (const htmlFile of ["index.html", "nes/index.html"]) {
+for (const htmlFile of ["index.html", "nes/index.html", "x16/index.html"]) {
   const html = readFileSync(join(out, htmlFile), "utf8");
   for (const ref of localRefs(html)) {
     // A reference from nes/index.html to "nes/..." or from index.html to a
