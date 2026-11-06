@@ -528,6 +528,13 @@ Design records and notes, grouped by port.
 - [`vera/docs/archive/apple2e/`](vera/docs/archive/apple2e/) — archived `//e` material; see
   [`IMPORT-NOTES.md`](vera/docs/archive/apple2e/IMPORT-NOTES.md) for what was dropped.
 
+**Porting guides**
+
+- [`docs/A2VERA-to-CX16.md`](docs/A2VERA-to-CX16.md) — the working guide for porting another a2vera
+  game (next up: freegemas): what transfers, the KERNAL LOAD asset layer and its lower-case
+  HostFS rule, the `$0801` boot chain, the input layer, the VSYNC cadence trap, a symptom → cause
+  table and a pre-flight checklist.
+
 **Commander X16**
 
 - [`x16/README.md`](x16/README.md) — the port: build, boot chain, controls, the mid-air exchange fixes and
