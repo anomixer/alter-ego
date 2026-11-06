@@ -38,6 +38,11 @@ twice).
   byte-identical to the tracked file.
 - Download URLs under `/releases/download/v0.0.2/…` answer 200; the two `.2mg` links in `iigs/`
   documentation were the only `iigs-v0.0.2` users and are updated.
+- `master` and the tag are the same commit: after this entry's wording was corrected (the release
+  title names both targets), `v0.0.2` was moved once with a forced tag push, so `git rev-parse
+  v0.0.2^{commit}` is `master`'s head and `git ls-tree v0.0.2^{commit}` lists all three artifacts.
+  The old `/releases/tag/iigs-v0.0.2` URL now answers **404** — the tag name in the release body is the
+  only place the old name survives, on purpose, so the rename can be read.
 
 ### Trap — the credential
 
