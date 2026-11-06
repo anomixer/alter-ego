@@ -15,8 +15,8 @@ release stopped being an IIgs-only thing, so both halves of it changed: the tag 
 delete `iigs-v0.0.2`.  Pointing it at HEAD rather than at the 2026-11-04 commit is deliberate — the
 release ships three ports' artifacts, so its source archive should hold all three, and the IIgs
 assets are unchanged bytes either way (`AlterEgo.2mg` `4115CB7F…`, `AlterEgo-full.2mg` `3D7EA71E…`,
-still the tracked files in `iigs/build/`).  The release title loses "IIgs" too:
-**Alter Ego — first release**.
+still the tracked files in `iigs/build/`).  The release title loses "IIgs" and names both targets:
+**Alter Ego - first release (Apple IIgs + Commander X16)**.
 
 ### The asset
 
