@@ -115,6 +115,11 @@ Deployed in `ee49fac` (deploy run `41837661445`), **success**; live `/index.html
 `/nes/index.html` (8,612 B) each carry exactly one `anomixer.github.io/apple2ts/` link and no trace of
 `apple2ts.com`.
 
+**2026-11-06 — reverted.** On request, all three links point at `https://apple2ts.com/` again with the
+same `?slot2=vera&tab=vera#<raw hdv>` tail (`README.md`, `web/index.html`, `web/nes/index.html`), and
+`web/nes/README.md` describes the upstream site instead of "our own Pages build". Nothing else in the
+repository references `anomixer.github.io/apple2ts/` any more.
+
 ### Files touched
 
 - `web/nes/make-logo.mjs` (word-by-word extraction, ramp mapping, `--report`), `web/assets/alter-ego-logo.png`,

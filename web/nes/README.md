@@ -39,9 +39,10 @@ starts with the original NES credits screen (English text, as on the real cartri
 
 The header has the large **ALTER EGO** title on the left and, at its right edge — the header is exactly
 the stage's width, so the links stop at the emulator's right border — the Apple II VERA port (Apple2TS,
-our own Pages build at <https://anomixer.github.io/apple2ts/> — upstream `apple2ts.com` has a broken VERA
-display), the Apple IIgs port (a2gsemu-ia) and the GitHub mark for
-<https://github.com/anomixer/alter-ego>.
+<https://apple2ts.com/>, streaming the released `vera/build/alter-ego-vera.hdv`), the Apple IIgs port
+(a2gsemu-ia) and the GitHub mark for <https://github.com/anomixer/alter-ego>.  The VERA link used to
+point at our own Pages build of Apple2TS because upstream's VERA display was broken; it now points at
+`apple2ts.com` again.
 
 ## Published site (GitHub Pages)
 
