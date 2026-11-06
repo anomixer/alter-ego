@@ -224,7 +224,9 @@ contra, tg-tetris, bench); their `Config.s` differ, the runtime files do not.
   scripts, scratch images).  The tests recreate what they need (`test-alterego.mjs` works in
   `tmp/test/`).  The one capture worth keeping — the exit screen from 2026-11-04d — is now tracked as
   `docs/screenshots/exit_screen.png` (704×440, 5,502 B, byte-identical to `tmp/p8test/exit2/t14-crop.png`),
-  so that entry's evidence survives the cleanup.
+  so that entry's evidence survives the cleanup.  One empty directory (`tmp/silky-upstream`) can
+  survive the delete while another process holds it open (an Explorer window is the usual culprit);
+  `rmdir` it once that is closed — nothing of value is in it.
 
 ## 2026-11-06 — the first release is `v0.0.2` now, with the X16 package as a third asset
 
