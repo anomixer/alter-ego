@@ -4,6 +4,32 @@ Newest first.  One entry per day of work, so the list lines up with the git hist
 on a given day appears in that day's entry.  Below this port's own entries are the silky-gs engine
 releases it came from.
 
+## 2026-11-06 — the first release is `v0.0.2`, and it carries the X16 SD-card package
+
+Both from a direct request: 「release 的第一個 release 要加 alter-ego-x16-sd.zip, 幫改 (tag也要改
+v0.0.2)」.  The single GitHub release is no longer IIgs-specific, so its tag is renamed and a third
+asset joins it.
+
+- **Tag renamed** `iigs-v0.0.2` → **`v0.0.2`**, now pointing at the 2026-11-06 commit, so the
+  release's source archive carries every port (the IIgs assets below are unchanged bytes, and still
+  byte for byte the files `iigs/build/` holds).  The old tag name is gone from GitHub; the history in
+  this file and in `AGENTS.md` keeps it as the label of what was released on 2026-11-04.
+- **New asset:** `alter-ego-x16-sd.zip` — 41,042 bytes, SHA256
+  `BB00F8868F14E1ACF4F0B8E9A381F076FEE779E05BC798FF2144D6DA35B1F8FC` — the Commander X16 SD-card
+  package, the same bytes as the tracked `x16/build/alter-ego-x16-sd.zip` (37 entries: `LOADER.PRG`,
+  `GAME`, `MUSIC`, the asset files, `LV00`–`LV25` and `README.TXT`).  It is reproducible:
+  `x16/tools/pack-sd.ps1` repacks the same `x16/spike/dist/` to the same hash.
+
+| Asset | Bytes | SHA256 | What it is |
+|---|---|---|---|
+| `AlterEgo.2mg` | 819,264 | `4115CB7F…` | 800 KiB GS/OS boot disk, unchanged |
+| `AlterEgo-full.2mg` | 3,670,080 | `3D7EA71E…` | full System 6 volume, unchanged |
+| `alter-ego-x16-sd.zip` | 41,042 | `BB00F886…` | Commander X16 SD-card package (see `x16/README.md`) |
+
+Docs updated where the tag was named: `README.md` (the IIgs download bullet and the PLAY HERE row),
+`iigs/README.md` (status and the release section), and `x16/README.md` / `x16/readme-tw.md` now say
+the package ships as this release's asset.
+
 ## 2026-11-04e — released: tag `iigs-v0.0.2`
 
 The port is published: tag **`iigs-v0.0.2`**,

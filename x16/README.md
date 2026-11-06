@@ -87,7 +87,9 @@ powershell -NoProfile -ExecutionPolicy Bypass -File x16\tools\shot.ps1 `
 
 [`x16/build/alter-ego-x16-sd.zip`](build/alter-ego-x16-sd.zip) (41,042 B, 37 entries, SHA256 `bb00f886…35b1f8fc`) is the
 copy to hand to an X16 owner: unzip it **into the root** of the SD card and the game is
-installed.  Rebuild it after `build.ps1` with
+installed.  It ships as an asset of the repository's first release, tag
+[`v0.0.2`](https://github.com/anomixer/alter-ego/releases/tag/v0.0.2), next to the two IIgs disks, so
+an X16 owner can download it without a clone.  Rebuild it after `build.ps1` with
 
 ```powershell
 powershell -NoProfile -ExecutionPolicy Bypass -File x16\tools\pack-sd.ps1

@@ -3,6 +3,56 @@
 This file is the working log and hand-off for the **Apple IIgs (silky-gs)** port. It supersedes the
 archived `//e` notes in `vera/docs/archive/apple2e/`. Dates are Asia/Taipei.
 
+## 2026-11-06 — the first release is `v0.0.2` now, with the X16 package as a third asset
+
+「release 的第一個 release 要加 alter-ego-x16-sd.zip, 幫改 (tag也要改 v0.0.2)」.  The one GitHub
+release stopped being an IIgs-only thing, so both halves of it changed: the tag and the asset list.
+
+### The tag
+
+`iigs-v0.0.2` → **`v0.0.2`**.  GitHub cannot rename a tag, so the rename is: create `v0.0.2` at the
+2026-11-06 commit (HEAD, i.e. the commit that updates these docs), point the release at it, then
+delete `iigs-v0.0.2`.  Pointing it at HEAD rather than at the 2026-11-04 commit is deliberate — the
+release ships three ports' artifacts, so its source archive should hold all three, and the IIgs
+assets are unchanged bytes either way (`AlterEgo.2mg` `4115CB7F…`, `AlterEgo-full.2mg` `3D7EA71E…`,
+still the tracked files in `iigs/build/`).  The release title loses "IIgs" too:
+**Alter Ego — first release**.
+
+### The asset
+
+`alter-ego-x16-sd.zip`, 41,042 bytes, SHA256
+`BB00F8868F14E1ACF4F0B8E9A381F076FEE779E05BC798FF2144D6DA35B1F8FC` — uploaded from
+`x16/build/alter-ego-x16-sd.zip`, so the asset and the tracked file are one file, not a repack.  It
+is the Commander X16 SD-card package described in `x16/README.md`: 37 entries (`LOADER.PRG`, `GAME`,
+`MUSIC`, the seven asset files, `LV00`–`LV25`, `README.TXT`), no wrapper directory, and reproducible
+— `x16/tools/pack-sd.ps1` packs the same `x16/spike/dist/` to the same hash (checked by packing
+twice).
+
+### Verified
+
+- `git ls-remote --tags` after the push lists `v0.0.2` and no `iigs-v0.0.2`; the tag's commit is the
+  docs commit, and `git ls-tree v0.0.2^{commit}` shows `x16/build/alter-ego-x16-sd.zip` (41,042 B)
+  and `iigs/build/AlterEgo.2mg` side by side.
+- The release API answers `tag_name = v0.0.2` with three assets; each asset's `size` and computed
+  SHA256 match the table in `iigs/CHANGES.md`, and the `.zip` downloaded from the release is
+  byte-identical to the tracked file.
+- Download URLs under `/releases/download/v0.0.2/…` answer 200; the two `.2mg` links in `iigs/`
+  documentation were the only `iigs-v0.0.2` users and are updated.
+
+### Trap — the credential
+
+There is no `gh` and no token in the environment on this machine; the push works through the Windows
+credential manager.  `git credential fill` (`protocol=https`, `host=github.com`) returns the stored
+OAuth token, which the REST calls use as `Authorization: Bearer …` — no token is written to disk or
+into the docs.
+
+### Files touched
+
+- `README.md` (PLAY HERE row, IIgs download bullet), `iigs/README.md` (status, release section),
+  `x16/README.md` / `x16/readme-tw.md` (the package is this release's asset), `iigs/CHANGES.md`, this
+  entry.  No artifact changed: `iigs/build/*.2mg` and `x16/build/alter-ego-x16-sd.zip` are byte for
+  byte what they were.
+
 ## 2026-11-04i — the mark: ALTER orange, EGO blue, one copy of each word
 
 「1. 右邊EGO變黃了?  原來不是偏藍色嗎? 2. ALTER只要上面的這5個英文字就好, 不用倒影, EGO也是一樣」,

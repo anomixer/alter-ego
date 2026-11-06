@@ -23,8 +23,9 @@ current bootable 3.5" images:
 ## Current status (2026-11-04, branch `master`)
 
 - **Released:** tag
-  [`iigs-v0.0.2`](https://github.com/anomixer/alter-ego/releases/tag/iigs-v0.0.2) ships the two disks
-  in `build/` — the 800 KiB boot disk and the full System 6 volume (see "Release" below).
+  [`v0.0.2`](https://github.com/anomixer/alter-ego/releases/tag/v0.0.2) ships the two disks
+  in `build/` — the 800 KiB boot disk and the full System 6 volume (see "Release" below).  The same
+  release also carries the Commander X16 SD-card package, `alter-ego-x16-sd.zip`.
 - Boots on GSplus; title → level 0 is playable, with music and SFX enabled.
 - Playfield is the NES 32×20 tile map at **256×200** displayed inside the 320×200 SHR screen.
 - Single gameplay band: SHR lines 0–199 map to NES rows 16–215 (`y_offset=16`).  The HUD stats,
@@ -172,11 +173,15 @@ Cadius takes the ProDOS type from the `#B3DB03` suffix: staging the file as plai
 replaces it as `UNK $0000` and the image will not launch.  Use `REPLACEFILE` (not `ADDFILE`) and
 confirm with `CATALOG` that the entry still reads `S16 $DB03`.
 
-## Release: `iigs-v0.0.2` — two `.2mg` disks
+## Release: `v0.0.2` — two `.2mg` disks (and the X16 package)
 
-The port is published as tag **`iigs-v0.0.2`**
-(<https://github.com/anomixer/alter-ego/releases/tag/iigs-v0.0.2>), with the two images below as its
-assets — byte for byte the files the tag holds, so an asset and a checkout cannot drift.  To try it
+The port is published as tag **`v0.0.2`**
+(<https://github.com/anomixer/alter-ego/releases/tag/v0.0.2>), with the two images below as its
+assets — byte for byte the files the tag holds, so an asset and a checkout cannot drift.  The tag was
+renamed from `iigs-v0.0.2` on 2026-11-06, when the Commander X16's SD-card package
+(`alter-ego-x16-sd.zip`) joined the same release: the release covers the whole repository now, so
+the tag is not IIgs-specific either, and it points at that day's commit so the source archive carries
+every port.  To try it
 without installing an emulator, 👉 **[PLAY HERE](https://a2gsemu-ia.pages.dev/?lang=en&game=https%3A%2F%2Fgithub.com%2Fanomixer%2Falter-ego)**
 (a2gsemu-ia boots the released `AlterEgo.2mg` from the repository).  Two images
 are tracked in `build/`:
