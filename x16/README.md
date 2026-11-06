@@ -21,9 +21,10 @@ This directory holds the **complete port** that carries this repository's Apple 
   port is [`docs/A2VERA-to-CX16.md`](docs/A2VERA-to-CX16.md) — platform deltas, the asset layer, boot
   chain, input, cadence, the pitfalls table and a pre-flight checklist.  The Traditional Chinese
   version is [`docs/A2VERA-to-CX16-tw.md`](docs/A2VERA-to-CX16-tw.md).
-- Release announcement for the Commander X16 forum (English, BBCode):
-  [`docs/cx16forum-post.txt`](docs/cx16forum-post.txt), illustrated with 640x480 screenshots cut out
-  of the emulator captures (no window chrome) in [`docs/forum/`](docs/forum/).
+- Release announcement: posted on the Commander X16 forum on 2026-11-06 (English, BBCode).  The
+  draft text is gone; its five illustrations stay, as 640x480 screenshots cut out of the emulator
+  captures (no window chrome) in [`docs/forum/`](docs/forum/) — the published post links those
+  images from this repository, so they cannot be deleted without breaking it.
 
 ## Layout
 
@@ -31,8 +32,7 @@ This directory holds the **complete port** that carries this repository's Apple 
 x16/
   docs/PORT-CX16-EVAL.md   evaluation + implementation record (platform comparison, reuse list,
                            the fixes one by one, the evidence)
-  docs/cx16forum-post.txt  the release post for the Commander X16 forum (English, BBCode)
-  docs/forum/*.png         clean 640x480 screenshots for that post
+  docs/forum/*.png         five 640x480 screenshots the posted forum announcement links to
   tools/shot.ps1           screenshot of the x16emu window (PNG, hides the console window)
   tools/play.ps1           several timed screenshots (key injection does not work with
                            x16emu, so this is only a fallback)
