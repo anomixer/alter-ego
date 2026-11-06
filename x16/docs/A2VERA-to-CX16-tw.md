@@ -191,9 +191,11 @@ ae_load(name, sa, addr, bank);       /* SETNAM/SETLFS，然後 jsr $FFD5 */
 
 幾個真正重要的實作細節：
 
-1. **檔名一定要小寫。** x16emu r49 的 HostFS 是逐 byte 比對 `SETNAM`，所以 `"GAME"` 會回
-   `A=4`（FILE NOT FOUND），`"game"` 才載得到。在你送出名稱的地方就轉小寫（`asset_cx16.c` 的
-   `ae_lname()`）；Apple II 那邊可以保留大寫檔名。
+1. **程式送出的「要求名稱」一定要小寫。** x16emu r49 的 HostFS 會拒絕大寫的 `SETNAM`：即使磁碟
+   上的檔案本身就叫 `GAME`，送 `"GAME"` 也是回 `A=4`（FILE NOT FOUND）；混合大小寫的 `"GaMe"`
+   一樣失敗，只有 `"game"` 載得到。所以這條規則管的是**要求**、不是檔案——在你送出名稱的地方
+   就轉小寫（`asset_cx16.c` 的 `ae_lname()`）。檔案本身可以保留大寫（`x16/spike/dist/` 就是
+   大寫），Apple II 那邊也照舊用大寫。
 2. **`LOAD` 回的 carry 旗標不可信**——成功時它也是設著的（`P=31`）。要檢查 `A`
    （0 = OK、4 = 找不到……），不要用 `bcs fail`。
 3. **`SA=2` 是對 VRAM 友善的形式**（無檔頭，位址在 `X/Y`，bank 在 `A`）：用它把調色盤或圖磚表
@@ -269,8 +271,13 @@ stub 只是為了讓 `-prg loader.prg -run` 和 `LOAD "loader.prg",8,1` + `RUN` 
 
 把開機鏈弄起來的時候，每個階段丟一個 `$9FB9` beacon 字母——那是模擬器給你的最便宜進度燈（§10）。
 
-發行時，要嘛留一個目錄 + `AUTOBOOT.X16`，要嘛做一個 SD 映像、把同樣的檔案用**大寫**檔名放進去
-（DOS 不需要 HostFS 的小寫規則——但要實測）。
+發行最簡單的型式，是「只打包遊戲真的會載入的檔案」的 zip，而且**不要外層資料夾**：loader 讀的是
+目前目錄，所以解壓到記憶卡根目錄就是安裝。附一份純文字 `README.TXT`（兩行啟動指令＋按鍵），而且
+只放遊戲會要求的檔案——a2vera 的 staging 目錄還混著 ProDOS 的殘留物（Apple II 執行檔、`.PSG`
+樂曲、`BASIC.SYSTEM#…`），在 X16 上一點意義都沒有。檔名照原來的大寫即可；只有「要求名稱」必須
+小寫（§5）。要開機自動執行，就在卡上放一個叫 `AUTOBOOT.X16` 的 BASIC 程式（開機時 ROM 會跑
+它）——boot stub 本身就符合，把它改名成 `AUTOBOOT.X16` 就好。autoboot 沒辦法在 HostFS 下驗
+（ROM 自己送的 `LOAD "AUTOBOOT.X16"` 也是大寫要求，§5），所以這條路要上真卡或 SD 映像才知道。
 
 ---
 
@@ -432,11 +439,14 @@ Alter Ego 的 `web/x16/` 把真正的 `dist/` 跑在官方 X16Community WebAssem
 
 | 形式 | 時機 | 注意 |
 | --- | --- | --- |
-| 目錄 + `-fsroot` | 開發 | 小寫檔名（HostFS） |
-| `AUTOBOOT.X16` 目錄 | 交給別人 | 仍然依賴 HostFS/DOS |
-| `.zip` / SD 映像 | 發行 | DOS 上大寫檔名沒問題；要上實機測 |
+| 目錄 + `-fsroot` | 開發 | 「要求名稱」要小寫（HostFS）；檔案本身大小寫皆可 |
+| 只含載入檔案的 `.zip` | 發行／交給別人 | 不要外層資料夾；附 `README.TXT`、（可選）`AUTOBOOT.X16` |
+| 含 cmdr-dos 的 SD 映像 | 發行 | 最接近實機；大小寫規則要在那裡實測 |
 
-產物名稱要穩定、帶版本（`<game>-x16-…`），而且永遠不要改掉已發行的名字。
+產物名稱要穩定、帶版本（`<game>-x16-…`），而且永遠不要改掉已發行的名字。打包要可重現（entry
+順序與時間戳固定），驗證時要解壓到暫存目錄、開那一份，而不是開 `dist/`。
+
+這個 repo 的版本是 `x16/tools/pack-sd.ps1` → `x16/build/alter-ego-x16-sd.zip`。
 
 ---
 
@@ -447,7 +457,7 @@ Alter Ego 的 `web/x16/` 把真正的 `dist/` 跑在官方 X16Community WebAssem
 | 「按鍵全都沒反應」 | `VERA_IEN` 被清零 → KERNAL IRQ 死 → `GETIN` 永遠 0 | 串接 `$0314/$0315`，`IEN` 絕不清零（§8） |
 | 標題畫面全是條紋/雜訊 | 資產根本沒載入 | `SETNAM` 檔名轉小寫（§5） |
 | 進關卡黑畫面 | `read()` 在寫入中途重設 `VERA.address` | 在 `read()` 前後存回 VERA 指標 |
-| `LOAD` 回 `A=4` | 檔名大小寫 | 名稱轉小寫 |
+| `LOAD` 回 `A=4` | 程式送的「要求名稱」不是小寫 | 要求名稱轉小寫（§5） |
 | `LOAD`「失敗」但資料正確 | carry 永遠是 1 | 測 `A`，不要測 carry |
 | `$0000` 的資產不見 | KERNAL LOAD 不接受位址 0 | 暫存到 `$A000` 再複製 |
 | load 之後 `GETIN` 回垃圾 | 輸入通道還指向檔案 | 每次 load 後 `CLRCHN`（`$FFCC`） |
@@ -502,6 +512,7 @@ Alter Ego 的 1–8 步兩天就做完，因為 VERA 層真的 1:1；換成規�
 | 自動化、截圖、wav | `x16/tools/shot.ps1`、`playtest.ps1`、`x16/spike/wavstat.py` |
 | 幾何模擬 | `x16/spike/fallswap_sim.py` |
 | 瀏覽器播放器 | `web/x16/assemble.mjs`、`web/x16/app.js` |
+| SD 卡發行包 | `x16/tools/pack-sd.ps1` → `x16/build/alter-ego-x16-sd.zip` |
 
 ---
 

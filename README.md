@@ -428,6 +428,13 @@ is the platform study and the per-fix evidence log.
 x16emu -prg x16/spike/dist/LOADER.PRG -run -fsroot x16/spike/dist -scale 2
 ```
 
+- For a real machine: [`x16/build/alter-ego-x16-sd.zip`](x16/build/alter-ego-x16-sd.zip)
+  (41,042 B, 37 files) is the SD-card package — unzip it into the card's root, then
+  `LOAD "LOADER.PRG",8,1` and `RUN` (or rename the loader to `AUTOBOOT.X16`).  It holds
+  only the files the build loads, plus a plain-text `README.TXT`; `x16/tools/pack-sd.ps1`
+  rebuilds it from `x16/spike/dist/`.  Verified by unpacking it into a scratch directory and
+  booting that copy to the title, then into Level 1.
+
 - In the browser: <https://anomixer.github.io/alter-ego/x16/index.html> boots the same files on
   the official X16Community r49 WebAssembly emulator.  [`web/x16/`](web/x16/) holds the page
   and [`web/x16/assemble.mjs`](web/x16/assemble.mjs) downloads the pinned emulator archive
@@ -547,6 +554,8 @@ Design records and notes, grouped by port.
   reuse list, probe evidence, the per-fix verification log and the browser build.
 - [`x16/docs/PORT-CX16-EVAL-tw.md`](x16/docs/PORT-CX16-EVAL-tw.md) — the same report in Traditional Chinese
   (the original it was translated from).
+- [`x16/build/alter-ego-x16-sd.zip`](x16/build/alter-ego-x16-sd.zip) — the SD-card package: the files the
+  X16 build loads, a plain-text `README.TXT`, for unzipping into a card; `x16/tools/pack-sd.ps1` rebuilds it.
 
 ## Credits
 

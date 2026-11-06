@@ -9,9 +9,9 @@
 
 - 一句話現況（2026-11-06）：x16emu 上可玩——標題選單、26 個關卡（LV00–LV25）、
   交換、暫停選單、特殊按鍵、credits、結局都在；實際遊玩驗證過 LV01／LV03／LV24，
-  其餘關卡共用同一支載入程式；瀏覽器版已上 GitHub Pages（見「瀏覽器版」）。
-  尚差實機、SD/DOS 打包與長時間真人試玩（詳見
-  「目前的狀態（誠實版）」）。
+  其餘關卡共用同一支載入程式；瀏覽器版已上 GitHub Pages（見「瀏覽器版」），
+  SD 卡發行包放在 `build/`（見「SD 卡發行包」）。尚差實機與長時間真人試玩
+  （詳見「目前的狀態（誠實版）」）。
 - 評估報告：[`docs/PORT-CX16-EVAL.md`](docs/PORT-CX16-EVAL.md)（建議先讀；英文主檔，中文原文在
   [`docs/PORT-CX16-EVAL-tw.md`](docs/PORT-CX16-EVAL-tw.md)）
 - 目標平台：Commander X16（65C02S / VERA），模擬器 `C:\dev\emu\x16emu`（r49）
@@ -29,6 +29,7 @@ x16/
   tools/shot.ps1           x16emu 視窗截圖工具（PNG，含 console 窗遮蔽處理）
   tools/play.ps1           多張定時截圖（送鍵在 x16emu 上無效，僅作輔助）
   tools/playtest.ps1       送鍵腳本（前景視窗逐 key 截圖；`-KeySequence 'down,right:0.7,z:0.3'`）
+  tools/pack-sd.ps1        從 `spike/dist` 打 `build/alter-ego-x16-sd.zip`
   probe/                   VERA / 檔案 API 的獨立 probe（io*.c、kload.s、截圖）
   spike/                   cc65 `-t cx16` 的整合建置（GAME + MUSIC overlay + LOADER.PRG）
     build.ps1              建置腳本
@@ -44,6 +45,7 @@ x16/
     *_trace.py             其他 trace／wav 分析工具（tritrace/bytrace/wavstat）
     dist/                  建置產物（GAME/MUSIC/LOADER.PRG/資產，出貨版）
     work/                  編譯中間檔（main.s/main.o/game.map；不進版控）
+  build/alter-ego-x16-sd.zip  SD 卡發行包（見「SD 卡發行包」）
   bootmin/                 最小 HostFS 根目錄（除錯載入行為用；本機暫存，不進版控）
 ```
 
@@ -73,6 +75,44 @@ C:\dev\emu\x16emu\x16emu.exe -warp -prg x16\spike\dist\LOADER.PRG -run -fsroot x
 powershell -NoProfile -ExecutionPolicy Bypass -File x16\tools\shot.ps1 `
   -Prg x16\spike\dist\LOADER.PRG -FsRoot x16\spike\dist -Out x16\spike\shot.png -WaitSeconds 8
 ```
+
+## SD 卡發行包
+
+[`x16/build/alter-ego-x16-sd.zip`](build/alter-ego-x16-sd.zip)（41,042 B、37 個檔案、SHA256 `bb00f886…35b1f8fc`）就是
+交給 X16 使用者的成品：解壓到 SD 卡**根目錄**即可。`build.ps1` 跑完後可重新打包：
+
+```powershell
+powershell -NoProfile -ExecutionPolicy Bypass -File x16\tools\pack-sd.ps1
+```
+
+`pack-sd.ps1` 用明確白名單從 `spike/dist/` 打包——`LOADER.PRG`、`GAME`、`MUSIC`、
+`TILES`、`CRPAL`、`CREDITS`、`ENDPAL`、`ENDING`、`GOVER`、`GOPAL` 與 `LV00`–`LV25`，
+也就是 X16 版真正會載入的檔案。`dist/` 裡 Apple II 的殘留物不會進包：`*.PSG` 樂曲、
+`SFXBANK`、`LV00L`、`AE2VERA*#*`、`AEMUSIC*#*`、`BASIC.SYSTEM#*`、`PRODOS#*`、`STARTUP#*`
+（X16 版沒有 ProDOS，音樂來自 `MUSIC` overlay）。壓縮檔沒有外層資料夾（loader 讀的是目前
+目錄），entry 順序與時間戳固定，所以同一份 `dist/` 重打包會得到相同位元組。裡面附一份
+`README.TXT`（純 ASCII、CRLF）：檔案說明、安裝與啟動、按鍵、注意事項與 credits。
+
+在實機上，把記憶卡當 drive 8，於 BASIC 提示符打：
+
+```basic
+LOAD "LOADER.PRG",8,1
+RUN
+```
+
+把 `LOADER.PRG` 改名成 `AUTOBOOT.X16`，ROM 就會在開機時自動跑這個 BASIC 程式。x16emu 的
+HostFS 沒辦法驗證 autoboot——ROM 自己送出的 `LOAD "AUTOBOOT.X16"` 是大寫名稱，HostFS 會
+拒絕——所以發行包改用 HostFS 可驗的方式：解壓到暫存目錄，再直接開機。
+
+```powershell
+x16emu -prg <scratch>\LOADER.PRG -run -fsroot <scratch>
+```
+
+解壓出來的那份會開到標題畫面，按 `Enter` 進 Level 1（`HELLO WORLD`），再按 `Right` 能走動
+——等於每個打包進去的檔案都被用到：loader、`GAME`、`MUSIC`、`TILES`、關卡檔與調色盤資產。
+
+尚未驗證：真實 SD 卡與 cmdr-dos（FAT 路徑）。FAT/DOS 的名稱比對不分大小寫，所以壓縮檔保留
+大寫檔名（`LOAD "LOADER.PRG",8,1` 就是這樣打），而遊戲本身透過 asset 層要求小寫名稱。
 
 ## 瀏覽器版（GitHub Pages）
 

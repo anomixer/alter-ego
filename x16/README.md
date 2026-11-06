@@ -10,9 +10,9 @@ This directory holds the **complete port** that carries this repository's Apple 
 - Status in one line (2026-11-06): playable on x16emu — title menu, 26 levels (LV00–LV25),
   the exchange, the pause menu, the special keys, credits and the ending are all there.
   LV01 / LV03 / LV24 were played for real; the other levels go through the same loader
-  routine.  There is also a browser build on GitHub Pages (see "Browser build").  Still
-  missing: real hardware, SD/DOS packaging and a long hands-on session (see "Status (honest
-  version)").
+  routine.  There is also a browser build on GitHub Pages (see "Browser build"), and an
+  SD-card zip in `build/` (see "SD-card package").  Still missing: real hardware and a long
+  hands-on session (see "Status (honest version)").
 - Evaluation report: [`docs/PORT-CX16-EVAL.md`](docs/PORT-CX16-EVAL.md) (read that first; the
   Traditional Chinese original is [`docs/PORT-CX16-EVAL-tw.md`](docs/PORT-CX16-EVAL-tw.md))
 - Target: Commander X16 (65C02S / VERA), emulator `C:\dev\emu\x16emu` (r49)
@@ -33,6 +33,7 @@ x16/
                            x16emu, so this is only a fallback)
   tools/playtest.ps1       key-script driver (foreground window, one PNG per key;
                            `-KeySequence 'down,right:0.7,z:0.3'`)
+  tools/pack-sd.ps1        builds `build/alter-ego-x16-sd.zip` from `spike/dist`
   probe/                   independent probes for VERA / the file API (io*.c, kload.s, shots)
   spike/                   the integrated cc65 `-t cx16` build (GAME + MUSIC overlay + LOADER.PRG)
     build.ps1              build script
@@ -50,6 +51,7 @@ x16/
     *_trace.py             other trace / wav analysis helpers (tritrace/bytrace/wavstat)
     dist/                  build output (GAME/MUSIC/LOADER.PRG/assets — the shipped build)
     work/                  compiler intermediates (main.s/main.o/game.map; not in git)
+  build/alter-ego-x16-sd.zip  the SD-card package (see "SD-card package")
   bootmin/                 minimal HostFS root for debugging the load path (local scratch,
                            not in git)
 ```
@@ -80,6 +82,51 @@ C:\dev\emu\x16emu\x16emu.exe -warp -prg x16\spike\dist\LOADER.PRG -run -fsroot x
 powershell -NoProfile -ExecutionPolicy Bypass -File x16\tools\shot.ps1 `
   -Prg x16\spike\dist\LOADER.PRG -FsRoot x16\spike\dist -Out x16\spike\shot.png -WaitSeconds 8
 ```
+
+## SD-card package
+
+[`x16/build/alter-ego-x16-sd.zip`](build/alter-ego-x16-sd.zip) (41,042 B, 37 entries, SHA256 `bb00f886…35b1f8fc`) is the
+copy to hand to an X16 owner: unzip it **into the root** of the SD card and the game is
+installed.  Rebuild it after `build.ps1` with
+
+```powershell
+powershell -NoProfile -ExecutionPolicy Bypass -File x16\tools\pack-sd.ps1
+```
+
+`pack-sd.ps1` packs `spike/dist/` from an explicit allow-list — `LOADER.PRG`, `GAME`, `MUSIC`,
+`TILES`, `CRPAL`, `CREDITS`, `ENDPAL`, `ENDING`, `GOVER`, `GOPAL` and `LV00`–`LV25`, i.e. the
+files the X16 build actually loads.  The Apple II staging leftovers in `dist/` stay out: the
+`*.PSG` songs, `SFXBANK`, `LV00L`, `AE2VERA*#*`, `AEMUSIC*#*`, `BASIC.SYSTEM#*`, `PRODOS#*`,
+`STARTUP#*` (the X16 build has no ProDOS, and its music comes from the `MUSIC` overlay).  The
+archive has no wrapper directory — the loader reads the current directory — and its entries
+are written in a fixed order with a fixed timestamp, so repacking the same `dist/` produces
+the same bytes.  `README.TXT` rides along (plain ASCII, CRLF): what the files are, how to
+install and start, the controls, notes and credits.
+
+At the BASIC prompt on the machine, with the card as drive 8:
+
+```basic
+LOAD "LOADER.PRG",8,1
+RUN
+```
+
+Renaming `LOADER.PRG` to `AUTOBOOT.X16` makes the game start by itself at power-on (the ROM
+runs a BASIC program on the card with that name).  Autoboot cannot be exercised in x16emu's
+HostFS — the ROM's own `LOAD "AUTOBOOT.X16"` is an upper-case name, and HostFS rejects those
+— so the package is verified the HostFS-safe way: unzip into a scratch directory and boot the
+extracted copy.
+
+```powershell
+x16emu -prg <scratch>\LOADER.PRG -run -fsroot <scratch>
+```
+
+That booted the title screen and, on `Enter`, Level 1 `HELLO WORLD`, then moved on a held
+`Right` — so every packed file is exercised: loader, `GAME`, `MUSIC`, `TILES`, the level file
+and the palette assets.
+
+Not verified: a real SD card with cmdr-dos.  The FAT path matches names without regard to
+case, which is why the archive keeps the upper-case names a typed `LOAD "LOADER.PRG",8,1`
+expects, while the game itself asks for lower-case names through its asset layer.
 
 ## Browser build (GitHub Pages)
 

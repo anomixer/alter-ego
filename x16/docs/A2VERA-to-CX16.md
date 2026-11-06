@@ -205,10 +205,12 @@ ae_load(name, sa, addr, bank);       /* SETNAM/SETLFS, then jsr $FFD5 */
 
 Implementation notes that matter:
 
-1. **File names must be lower case.**  x16emu r49's HostFS compares the raw `SETNAM` bytes, so
-   `"GAME"` returns `A=4` (FILE NOT FOUND) and `"game"` loads.  Lower-case every name at the
-   point where you send it (`ae_lname()` in `asset_cx16.c`); the Apple II side can keep its
-   upper-case names.
+1. **The name the program sends must be lower case.**  x16emu r49's HostFS rejects upper-case
+   `SETNAM` names: `"GAME"` returns `A=4` (FILE NOT FOUND) even when the file on disk is itself
+   `GAME`, a mixed-case `"GaMe"` fails too, and `"game"` loads it.  So the rule is about the
+   request, not about the file — lower-case every name at the point where you send it
+   (`ae_lname()` in `asset_cx16.c`).  The files themselves may keep their upper-case names (they
+   do in `x16/spike/dist/`), and the Apple II side keeps its upper-case names.
 2. **The carry flag from `LOAD` is untrustworthy** — it is set (`P=31`) even on success.  Check
    `A` (0 = OK, 4 = not found, …), never `bcs fail`.
 3. **`SA=2` is the VRAM-friendly form** (no header, address in `X/Y`, bank in `A`): use it to load
@@ -290,8 +292,16 @@ The loader then:
 Keep a `$9FB9` beacon letter per stage while bringing this up — it is the cheapest progress lamp
 the emulator gives you (§10).
 
-For release, either keep a directory + `AUTOBOOT.X16`, or build an SD image with the same files
-under their **upper-case** names (DOS does not need the HostFS lower-case rule — but test it).
+For release, the simplest form is a zip of the files the build loads, with no wrapper directory:
+the loader reads the current directory, so unzipping into the card's root is the install step.
+Add a plain-text `README.TXT` with the two startup lines and the controls, and pack only the
+files the game requests — a2vera's staging directory also holds ProDOS leftovers (Apple II
+binaries, `.PSG` songs, `BASIC.SYSTEM#…`) that mean nothing on the X16.  Keep the names the
+files already have; only the request names must be lower case (§5).  If you want autoboot on
+hardware, a BASIC program on the card named `AUTOBOOT.X16` is run at power-on — the boot stub
+itself qualifies, so renaming it to `AUTOBOOT.X16` is enough.  Autoboot cannot be tested under
+HostFS (the ROM's own `LOAD "AUTOBOOT.X16"` is an upper-case request, §5), so test that path on
+a real card or an SD image.
 
 ---
 
@@ -463,11 +473,15 @@ The whole thing is ~200 lines of JS plus a 60-line build script; see `web/x16/`.
 
 | Form | When | Notes |
 | --- | --- | --- |
-| Directory + `-fsroot` | development | lower-case names (HostFS) |
-| `AUTOBOOT.X16` directory | share/hand-off | still HostFS/DOS-dependent |
-| `.zip` / SD image | release | upper-case names are fine on DOS; test on real hardware |
+| Directory + `-fsroot` | development | the requests must be lower-case (HostFS); file names may be any case |
+| `.zip` of the loaded files | release / hand-off | no wrapper directory; a `README.TXT` and (optionally) `AUTOBOOT.X16` |
+| SD image with cmdr-dos | release | the closest thing to hardware; test the case rules there |
 
 Keep artifact names stable and versioned (`<game>-x16-…`), and never rename an existing release.
+Make the pack reproducible — a fixed entry order and a fixed timestamp — and verify the package by
+unzipping it into a scratch directory and booting that copy, not `dist/`.
+
+This repository's version is `x16/tools/pack-sd.ps1` → `x16/build/alter-ego-x16-sd.zip`.
 
 ---
 
@@ -478,7 +492,7 @@ Keep artifact names stable and versioned (`<game>-x16-…`), and never rename an
 | “None of the buttons work” | `VERA_IEN` zeroed → KERNAL IRQ dead → `GETIN` always 0 | chain `$0314/$0315`, never zero `IEN` (§8) |
 | Title screen full of stripes/noise | assets never loaded | lower-case `SETNAM` names (§5) |
 | Black screen when entering a level | `read()` reset `VERA.address` mid-write | save/restore the VERA pointer around `read()` |
-| `LOAD` returns `A=4` | file name case | lower-case the name |
+| `LOAD` returns `A=4` | the name the program sent is not lower case | lower-case the request (§5) |
 | `LOAD` “fails” but data is fine | carry is always 1 | test `A`, not carry |
 | Assets missing at `$0000` | KERNAL LOAD rejects address 0 | stage at `$A000`, copy |
 | `GETIN` returns garbage after a load | input channel still points at the file | `CLRCHN` (`$FFCC`) after each load |
@@ -533,6 +547,7 @@ timing assumptions — verify those in step 1 and re-measure, do not copy these 
 | Automation, screenshots, wav | `x16/tools/shot.ps1`, `playtest.ps1`, `x16/spike/wavstat.py` |
 | Geometry simulation | `x16/spike/fallswap_sim.py` |
 | Browser player | `web/x16/assemble.mjs`, `web/x16/app.js` |
+| SD-card package | `x16/tools/pack-sd.ps1` → `x16/build/alter-ego-x16-sd.zip` |
 
 ---
 
