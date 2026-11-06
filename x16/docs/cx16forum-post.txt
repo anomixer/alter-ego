@@ -1,0 +1,95 @@
+Alter Ego for the Commander X16 - 26-level puzzle-platformer, SD-card build
+
+[b]Alter Ego[/b] is a puzzle-platformer from 2011 - originally a ZX Spectrum game by
+Denis Grachev, later converted to the NES by Shiru. This is a Commander X16 port of the
+NES version: 26 levels, title music, SFX, the pause menu, the credits and the ending, all
+ported over intact.
+
+[img]https://raw.githubusercontent.com/anomixer/alter-ego/master/x16/docs/forum/title.png[/img]
+
+[b]The one rule[/b]
+
+You cannot jump. Your only move is the [b]exchange[/b]: you trade places with your mirror
+image, your alter ego. Press B and you are standing at the mirrored spot while the copy
+takes your place - mirror left-to-right in most levels, top-to-bottom in a few
+(LV05/08/15/19/24), and that difference is the whole game. Read where the mirror lands,
+swap at the right moment, and you cross the gap, reach the ledge or drop past what
+patrols the level. Level 1 spells out HELLO WORLD for a reason, and the later ones
+(they have names like PROMENADE) start to bite.
+
+[img]https://raw.githubusercontent.com/anomixer/alter-ego/master/x16/docs/forum/level1.png[/img]
+
+[b]Download[/b]
+
+The SD-card build is an asset of the repository's first release:
+
+[url=https://github.com/anomixer/alter-ego/releases/tag/v0.0.2]Release v0.0.2 - alter-ego-x16-sd.zip[/url]
+
+Direct link: [url]https://github.com/anomixer/alter-ego/releases/download/v0.0.2/alter-ego-x16-sd.zip[/url]
+(41,042 bytes, 37 files, SHA256 BB00F8868F14E1ACF4F0B8E9A381F076FEE779E05BC798FF2144D6DA35B1F8FC)
+
+Unzip the archive into the [b]root[/b] of the card - there is no folder inside it - and the
+game is installed. At the BASIC prompt, with the card as drive 8:
+
+[code]
+LOAD "LOADER.PRG",8,1
+RUN
+[/code]
+
+Rename LOADER.PRG to AUTOBOOT.X16 and it starts by itself at power-on.
+
+[b]Try it in a browser first[/b]
+
+The same files run on the official X16Community r49 WebAssembly emulator:
+[url]https://anomixer.github.io/alter-ego/x16/index.html[/url]
+(sound needs one click, and the arrow keys / X / Z / Enter work there as on the machine)
+
+[b]Controls[/b]
+
+[list]
+[*]arrow keys - move and climb (hold the arrow and the hero keeps walking)
+[*]X or J - A / action (confirm, use)
+[*]Z or K - B / exchange (the swap with your alter ego)
+[*]Enter or Space - START (title menu: start game, start level, resume from pause)
+[*]1 or Left Shift - SELECT (there is a COW LEVEL behind it)
+[*]M / N - music mute / SFX mute (the title screen shows MUSIC OFF / SOUND OFF at once)
+[*]T - SFX/BGM test screen (T or ESC leaves)
+[/list]
+
+SNES pads in ports 1-4 work as an alternative to the keyboard. Title menu: up/down pick
+the line, left/right change the option or the level number. And yes, there is a level-skip
+cheat: inside a level, Z, Left, X, Z, Left, X, then 1.
+
+[b]What you need[/b]
+
+Any stock Commander X16 (VERA plus the 512 KB of banked RAM the game stages its tile and
+level data in). No DOS, no disk writes - the game only reads its files from drive 8
+through the KERNAL. It is the NES screen at 320x240, drawn with 8x8 VERA tiles and
+hardware sprites and scaled 2x to 640x480; the music and SFX are FamiTone data played on
+the VERA PSG (16 channels) by a small interpreter written for this port, and the 60 Hz
+logic loop comes off the VERA VSYNC interrupt.
+
+[b]Honest status[/b]
+
+Verified on x16emu r49 (with HostFS) and on the r49 browser build: boot, title menu, level
+1 and several later levels, the exchange, the pause menu, the special keys, the credits
+and the ending. [b]Not yet verified on real hardware[/b] - I do not own an X16 - so reports
+from real machines are very welcome, in particular from a real SD card with cmdr-dos and
+how the PSG music sounds on a real unit.
+
+[img]https://raw.githubusercontent.com/anomixer/alter-ego/master/x16/docs/forum/cow.png[/img]
+
+[b]Credits[/b]
+
+Original ZX Spectrum game (c) 2011 Denis Grachev. NES conversion by Shiru. NES music by
+Richard "Kulor" Armijo. NES hack by Alex Shabanov. Commander X16 conversion by anomixer,
+2026. Built with cc65 2.19, and standing on the FamiTone2 player, which was ported to the
+VERA PSG for this build.
+
+[img]https://raw.githubusercontent.com/anomixer/alter-ego/master/x16/docs/forum/credits.png[/img]
+
+The whole thing is open source, together with the Apple IIgs and Apple //e + VERA ports of
+the same game: [url]https://github.com/anomixer/alter-ego[/url] - the X16 sources are in
+x16/, and x16/docs/ carries the build notes and the step-by-step porting guide.
+
+Have fun, and tell me what breaks.
