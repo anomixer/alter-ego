@@ -60,6 +60,8 @@ SNES pads in ports 1-4 work as an alternative to the keyboard. Title menu: up/do
 the line, left/right change the option or the level number. And yes, there is a level-skip
 cheat: inside a level, Z, Left, X, Z, Left, X, then 1.
 
+[img]https://raw.githubusercontent.com/anomixer/alter-ego/master/x16/docs/forum/soundtest.png[/img]
+
 [b]What you need[/b]
 
 Any stock Commander X16 (VERA plus the 512 KB of banked RAM the game stages its tile and
