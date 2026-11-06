@@ -16,6 +16,10 @@
   [`docs/PORT-CX16-EVAL-tw.md`](docs/PORT-CX16-EVAL-tw.md)）
 - 目標平台：Commander X16（65C02S / VERA），模擬器 `C:\dev\emu\x16emu`（r49）
 - 工具鏈：cc65 2.19 的 `-t cx16`
+- 再移植別的 a2vera 遊戲（下一個是 `freegemas`）：這次移植沉澱出的工作指引在
+  [`docs/A2VERA-to-CX16.md`](docs/A2VERA-to-CX16.md)（英文主檔；繁體中文版
+  [`docs/A2VERA-to-CX16-tw.md`](docs/A2VERA-to-CX16-tw.md)）——平台差異、資產層、開機鏈、輸入、
+  節奏、症狀對照表與開工前檢查清單。
 
 ## 目錄
 

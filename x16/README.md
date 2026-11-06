@@ -18,8 +18,9 @@ This directory holds the **complete port** that carries this repository's Apple 
 - Target: Commander X16 (65C02S / VERA), emulator `C:\dev\emu\x16emu` (r49)
 - Toolchain: cc65 2.19 with `-t cx16`
 - Porting another a2vera game (the next one is `freegemas`): the reusable guide distilled from this
-  port is [`../docs/A2VERA-to-CX16.md`](../docs/A2VERA-to-CX16.md) — platform deltas, the asset
-  layer, boot chain, input, cadence, the pitfalls table and a pre-flight checklist.
+  port is [`docs/A2VERA-to-CX16.md`](docs/A2VERA-to-CX16.md) — platform deltas, the asset layer, boot
+  chain, input, cadence, the pitfalls table and a pre-flight checklist.  The Traditional Chinese
+  version is [`docs/A2VERA-to-CX16-tw.md`](docs/A2VERA-to-CX16-tw.md).
 
 ## Layout
 

@@ -530,10 +530,12 @@ Design records and notes, grouped by port.
 
 **Porting guides**
 
-- [`docs/A2VERA-to-CX16.md`](docs/A2VERA-to-CX16.md) — the working guide for porting another a2vera
-  game (next up: freegemas): what transfers, the KERNAL LOAD asset layer and its lower-case
+- [`x16/docs/A2VERA-to-CX16.md`](x16/docs/A2VERA-to-CX16.md) — the working guide for porting another
+  a2vera game (next up: freegemas): what transfers, the KERNAL LOAD asset layer and its lower-case
   HostFS rule, the `$0801` boot chain, the input layer, the VSYNC cadence trap, a symptom → cause
   table and a pre-flight checklist.
+- [`x16/docs/A2VERA-to-CX16-tw.md`](x16/docs/A2VERA-to-CX16-tw.md) — the same guide in Traditional
+  Chinese.
 
 **Commander X16**
 
