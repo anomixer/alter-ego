@@ -3,6 +3,229 @@
 This file is the working log and hand-off for the **Apple IIgs (silky-gs)** port. It supersedes the
 archived `//e` notes in `vera/docs/archive/apple2e/`. Dates are Asia/Taipei.
 
+## 2026-11-06b — the engine guide (`CLAUDE.md`) is folded in here, and the file is deleted
+
+`iigs/CLAUDE.md` was the silky-gs engine guide: what the runtime is, how it builds, how a game is laid
+out, and the rules that keep a port buildable.  Two hand-off documents can drift apart, so everything
+worth keeping is merged below and `CLAUDE.md` is gone.  This checkout *is* silky-gs — `package.json` says
+`"name": "silky-gs"`, the engine is the `src/` tree, and Alter Ego is one game under `src/games/`.
+
+### What the runtime is
+
+Silky-GS is a HAL and runtime that runs NES game code on the Apple IIgs: it **intercepts NES PPU/APU
+register writes** and translates them to IIgs Super Hi-Res graphics and DOC audio, all in 65816 assembly
+(Merlin32).  It is **not** a cycle-accurate emulator — the IIgs could not run one, and that is the
+design.
+
+`NES_StartUp` (`src/rom/scaffold.s`) sets up a dual-context machine — the IIgs as host, plus a direct
+page and a stack for the NES code — and hands control to the game loop, which alternates between
+running NES code and rendering.  Each game's `Main.s` calls it with X = the memory-manager user ID and
+A = the cartridge's power-on mirroring (`HORIZONTAL_MIRRORING` / `VERTICAL_MIRRORING`; switched at run
+time by mappers like the MMC1).
+
+The NES clock is real time (an emulated 60 Hz interrupt), and its PPU/APU writes are **recorded** —
+queued, not drawn.  A separate GS-side task renders the recorded state as fast as it can: full renders
+of a scrolling picture land around 12–15 fps, the dirty (quad-grid) renderer can reach 60 fps when
+little changes.  The two clocks are decoupled: several emulated NES frames can pass between two IIgs
+redraws, and a redraw shows whatever has been queued by then, not a snapshot of one particular NES
+frame.
+
+> **Debugging rule.** Never explain a rendering bug as "timing", "one frame late", "a race between
+> frame N and N+1".  That granularity does not exist here, so such an explanation is physically
+> impossible and will send you hunting in the wrong place.  When something draws wrong once and then
+> fixes itself, look for state that was **never recorded/propagated** (a write that got deduped or
+> skipped, a shadow/cache value never populated), not state that "arrived late".  The mechanism is
+> `src/ppu/ppu_queues.s`: writes are queued, the queue is frozen and flushed into shadow RAM/the PEA
+> code field when the render gets its turn, and it is not aligned with any NES frame boundary.
+
+### Build commands
+
+| Command | What it does |
+|---|---|
+| `npm run build:alterego` | `cd src/games/alterego && node build.js`; publishes `iigs/build/AlterEgoGS` (and `.boot` / `.exit` for the other two variants) |
+| `npm run test` | `scripts/test-alterego.mjs` — GSplus boot → title → Level 1 pixel smoke test |
+| `npm run test:unit` / `test:unit:watch` | the engine's vitest suite |
+| `npm run make:boot` | builds the `--exitscreen` copy and packs the 800 KiB `build/AlterEgo.2mg` |
+| `npm run trim` / `make:po` | 2MG trimmer and the bare `.po` derivation |
+| `npm run build:smb`, `build:zelda`, `build:contra`, `build:tetris`, … `build:all` | the other games bundled with the engine |
+| `npm run debug:<game>` | Crossrunner for smb/bf/lo/wump/eb/dk/ic/mb |
+
+External tools live in `package.json` under `config` (`merlin32`, `cadius`, `gsport`, `crossrunner`,
+`cyrene`, `kegscyrene`, `mame`); a script refers to a path as `%npm_package_config_<tool>%`.  There is
+**no automated test suite for the engine itself** — it is tested by running games in the emulators
+(GSPort, GSplus, MAME), and the `npm run test` above is this port's own smoke test.
+
+### What every build checks
+
+- **`scripts/omf-compact.js`** compacts the load file after assembling (runs of zeros become OMF DS
+  records and reserved space; `PPURAM`/`CHRDATA` are made whole, bank-aligned segments) and prints the
+  segment sizes.  **ExpressLoad cannot load a compacted file**, so link files must not use `XPL`, and a
+  segment that needs a whole bank gets it from `--bank`, never from a trailing `ds`.
+- **`scripts/check-xbank.js`** fails the build on a 16-bit reference from MAIN/ENGINE to another
+  segment's symbol (`jsr`/`jmp`, a 16-bit operand, `EXT+const`).  A few symbols that are meant as 16-bit
+  offsets inside a bank the code sets itself are allowed by name in the script.
+- **`scripts/code-signature.js save|compare <gameDir> <linkFile> <json>`** records each routine's
+  instruction stream and later reports the routines whose instructions changed — the way to show that
+  moving code between segments left the hot paths alone (baselines go in `build/`, not committed).
+
+### Where the code is
+
+| Path | What it holds |
+|---|---|
+| `src/rom/` | the NES execution wrapper: `scaffold.s` (init, direct-page swapping, the frame loop), `rom_config.s` (per-game constants), `rom_inject.s` (PPU/APU write shims + yield), `rom_exec.s`, `rom_input.s`, `rom_helpers.s`, the `rom_kbd_*` variants |
+| `src/ppu/` | PPU simulation: `ppu.s` (~2,600 lines: tiles → IIgs format, nametables, OAM, mirroring), the dirty renderer (`ppu_grid*.s`, with the generated `ppu_grid_marks.s`), `ppu_queues.s`, `ppu_palette.s`, `ppu_frame.s`, `ppu_entry.s` (internal long entries), `ppu_api.s` (the standard API games may call) |
+| `src/core/` | the render pipeline: `blitter/BlitterLite.s` (scanline renderer), `TemplateLiteBank1/2.s` (two banks of self-modifying scanline code), `blitter/PEISlammer.s`, `tiles/CompileTile.s`, `sprites/CompileSprites.s`, `Data.s` (all indexed tables, offset `$0000` of ENGINE), `static/TileData.s` |
+| `src/apu/apu.s` | NES audio on the DOC, interrupt-driven at 240/120/60 Hz |
+| `src/misc/`, `src/utils/` | message/IO and helpers used by `Main.s` |
+| `src/runtime/*.txt` | the `mput` lists a game's `Main.s` pulls (head and code); expanded by `scripts/gen-includes.js` between `AUTOINC` guards — edit these, never the expanded block |
+| `src/games/<game>/` | the port: link file, `Main.s`, `Config.s`, `Hooks.s`, `EngineExt.s`, `PPU.s`, `rom.s`, `TileData.s`, assets, `build.js`, and the generated palette/quit files |
+| `src/Engine.s`, `src/ImportEngine.s`, `src/ImportMain.s`, `src/Externals.s` | the ENGINE segment and the two symbol-import lists (`label ENT` at the definition) |
+| `scripts/`, `macros/`, `prg-src/` | build tooling, shared Merlin32 macros, and the NES PRG staging tree |
+
+**Which copy is live?**  The engine sources the build assembles are the shared ones under `src/`
+(`src/Engine.s` puts `core/`, `ppu/`, `rom/` by bare relative name, so Merlin32 resolves them next to
+`src/Engine.s`).  `src/games/alterego/` also carries its own `ppu/`, `core/`, `rom/` and `macros/`
+trees — those are pre-split per-game copies and **not** what gets assembled; editing them changes
+nothing.  When in doubt, the Merlin32 listings in the game directory (`AlterEgoGS_S0x_*_Output.txt`)
+name every file the assembler actually read.
+
+### How a game is laid out (the rules a change has to respect)
+
+- The link file (`AlterEgo.s`) has **eight segments** — `MAIN` (`Main.s`), `STKDP` (`Stack.s`),
+  `ENGINE` (`ASM ../../Engine.s`), `PPU1`/`PPU2` (the blitter template banks), `CHRDATA` (the converted
+  tiles), `AEROM` (the ROM bank) and `PPURAM` (PPU memory/shadow) — because the GS/OS S16 loader wants
+  eight and no more.  Palette swizzle tables are folded into MAIN for that reason.
+- `Main.s` names no runtime file directly: it starts with `; mput ../../runtime/head.txt` and ends with
+  `mput ../../runtime/code.txt`, and may `put` its own generated files (`pal_transitions.s`,
+  `palettes.s`, `QuitScreen.s`) — Merlin32 ignores a `put` inside a put file, which is why those are
+  put by `Main.s` rather than by a file `Main.s` puts.
+- `Config.s` is **constants only** (no code or macros); `Hooks.s` is **macros and flags only** (no
+  code); both are put by `Main.s` and, staged, by `src/Engine.s`.  `EngineExt.s` (optional) is the
+  game's code that must run in the *engine's* bank because the renderer or the PPU shims call it, or
+  because it works on engine internals.
+- The build stages the game's `Config.s`, `Hooks.s`, `pal_defs.s` and `EngineExt.s` into **`src/game/`**
+  (`stageEngineFiles` in `scripts/lib/nromBuild.js`), because Merlin32 resolves a `put` only relative to
+  the file that puts it.  `src/game/` is build scratch (gitignored) — edit the game's own files, never
+  the copies, and build **one game at a time**.
+- Cross-segment symbols: MAIN reaches the engine only through `jsl` to the long entry points and long
+  addressing.  Write `label ENT` / `label EXT`, never the operand form — `ENT a,b` is applied even inside
+  a skipped `DO` and silently relinks an `EXT` locally (and `check-xbank` rejects it).  A `Main.s`
+  routine the engine calls (an expanded macro, a `CUSTOM_*_ADDR` callback) is `label EXT` in `Hooks.s`
+  and `label ENT` in `Main.s`; that exact pairing is what `check-xbank` allows.
+- Every game must define every callback macro (an empty macro means no callback): `PRE_EVT_LOOP`,
+  `POST_EVT_LOOP`, `EVT_LOOP_BEGIN`/`END`, `PRE_RENDER`, `POST_RENDER`, `CONFIG_APPLY_HOOK`,
+  `CONFIG_GAME_DEFAULTS` (MAIN side) and `SPRITE_PRE_DRAW` (ENGINE side, before each sprite).  A
+  callback is called with `jsl` and returns with `rtl`; the data bank is the caller's.  `SPRITE_PRE_DRAW`
+  may set `sprClipTop` to hide a sprite's top lines (Zelda's 8-sprites-per-line limit at doors) — a game
+  that can set it must also set `SPRITE_CLIP equ 1`.
+- Custom renderer: `CUSTOM_RENDER_SCREEN equ 1` + `CUSTOM_RENDER_SCREEN_ADDR` in `Hooks.s`, routine in
+  `Main.s`.  `RenderDraw` `jsl`s to it (`DBR` = engine bank) and it returns `rtl` with C=1 (drawn; A =
+  the next render's `DirtyBits`, normally 0, or `DIRTY_BIT_BG0_REFRESH` when the engine must redraw
+  everything) or C=0 (nothing changed; the engine's `RenderScreen` draws and clears `DirtyBits`).  It
+  draws with `ppu_api.s`: `NES_SetScroll`, `PPU_DrawScreenRange`, or `PPU_SetupLines` bands +
+  `PPU_DrawScreen`, and reads the latched `_ppuctrl` / `_ppuscroll_x` / `_ppuscroll_y` long.
+- Scroll/control locks: `CUSTOM_PPU_CTRL_LOCK` / `CUSTOM_PPU_SCROLL_LOCK` (+ `..._ADDR`) in `Hooks.s`,
+  routine in `Main.s`.  `RenderLatch` calls them (interrupts off, DBR = engine bank); C=1 with A = the
+  value to latch (PPUCTRL; scroll in X high / Y low), C=0 to latch the register's last value.
+- Game code uses `src/ppu/ppu_api.s` only (the standard API, long entries, its own data bank); to add
+  something, add it there rather than reaching into engine internals.
+
+### Palettes are generated — do not hand-write `$3Fxx` handlers
+
+This port uses the generated palette pipeline (Zelda's, which is the model for new ports): **the IIgs
+shows 16 colours at once, the NES up to 25**, so the mapping is computed at build time and the engine
+owns the palette-RAM write dispatch (`ppuPaletteDispatch`, `src/ppu/ppu_palette.s`).
+
+- Source of truth: `src/games/alterego/palettes/*.txt` (one file per palette: `BG0:`–`SP3:`, four NES
+  colours each; here `title`, `game1`–`game5`, `game_over`, `well_done`) plus `transitions.txt`, an
+  INI-style graph of which palette may follow which.
+  - `*$xx` — **reserved**: the game changes this colour on the fly (cycling, per-room enemies).  It gets
+    its own IIgs slot and matches any value during detection.
+  - `$xx~$yy` — **approximated**: palette RAM holds `$xx` (detection) but it is drawn in `$yy`'s slot;
+    only when a palette cannot fit 16 slots otherwise, and it never writes the CLUT.
+  - `--` — **unused**: the screen does not show this cell; palette RAM holds whatever an earlier palette
+    left there, and it matches anything during detection, takes no slot and is never loaded.
+  - `[fixed …]` — those groups/cells (`group:index`) must keep their slots across transitions (a status
+    bar that is not redrawn while the playfield scrolls, e.g. this game's `HUD_FIXED_LINES` band).
+    `[direct …]` — writes to those cells go straight to their IIgs slot during that palette.
+    `start = none` — no palette is current until one is detected.
+- `build.js` runs `generatePalettes()` (`scripts/generate-palette-transitions.js`, via
+  `scripts/palette-transition.js`) and emits, into the game directory: `palettes.s` (8 swizzle tables ×
+  512 B per palette, 4 KB per palette → at most 16 palettes per bank; folded into MAIN here),
+  `pal_transitions.s` (`SetDefaultPalette`, `ApplyPaletteChange`, `DetectNESPalette`, `UpdatePalette`,
+  `LoadPaletteColors` + tables) and `pal_defs.s` (the `PAL_*` ids and `PAL_SLOT_*`).  **All three are
+  generated — never edit them by hand**; the generator skips itself when its outputs are newer than the
+  palette files, takes ~20 s when it runs, and `--report` prints layouts, slot use and the redraw matrix.
+- Runtime: colour 0 (`$3F00`/`$3F10`) is always CLUT slot 0 and is written straight to hardware; any
+  other palette write only sets `ppuPalDirty` (or goes straight out for a `[direct]` cell).  At the next
+  render `ApplyPaletteChange` (the `PRE_RENDER` hook) runs once: detect the palette by colours 1–3 of
+  each group, then either switch to it (swizzle tables, CLUT from live palette RAM, redraw only the
+  background groups whose slots moved) or reload the current layout (fades, cycling, unknown palette).
+  Nothing else writes the IIgs CLUT outside the render, so colours always change together with the tiles
+  and PPUMASK state they belong to.
+
+### Alter Ego's own settings (`Config.s`, the interesting ones)
+
+| Constant | Value here | Meaning |
+|---|---|---|
+| `HAS_CHR_RAM` / `HAS_BACKED_WRAM` | 0 / 0 | NROM with fixed 8 KB CHR-ROM |
+| `DIRECT_OAM_READ` | `$200` | OAM read from the NES RAM copy at `$0200` |
+| `ENABLE_DIRTY_RENDERING` | 1 | quad-grid renderer during play, full renderer for title/credits |
+| `SPR_PIXEL_SHIFT` | 1 | sprites on single pixels (shifted variants, bigger cache slots) |
+| `NO_VERTICAL_CLIP` | 0 | clipping on |
+| `y_offset_rows` / `y_height_rows` | 0 / 25 | show the first 200 NES scanlines (the SHR screen height) |
+| `HUD_FIXED_LINES` | 32 | top 32 scanlines (level name/status) stay put while the playfield scrolls |
+| `OAM_START_INDEX` / `OAM_END_INDEX` | 0 / 64 | the C game fills all 64 slots |
+
+Other games live in `src/games/` (smb, bf, wumpus, lightsout, iceclimber, excitebike, dk, mb, zelda,
+contra, tg-tetris, bench); their `Config.s` differ, the runtime files do not.
+
+### Memory map (also in `src/MemoryMap.md`)
+
+| Region | Purpose |
+|---|---|
+| `$012000–$019FFF` | shadow screen (the IIgs SHR copy that is rendered from) |
+| `$019D00–$019EFF` | SCBs (scanline control bytes) |
+| `$019E00–$019FFF` | IIgs palettes |
+| `$E12000–$E19FFF` | the actual SHR video memory |
+| compile banks | dynamically generated tile/sprite code |
+| direct page `$00–$FF` | NES zero page (swapped at the context switch) |
+| `$0100–$01FF` | NES stack |
+
+### Why it is fast enough
+
+- **Code compilation**: tiles and sprites are compiled to native 65816 sequences at start-up (tile *n*
+  at `n × 128` in the compile bank; a compiled tile stores 15 of its 16 words and returns word 0 in A),
+  which removes the per-pixel interpretation.
+- **PEI slammer**: `PEI` (push effective indirect) emits the screen writes.
+- **Dirty rendering**: the quad-grid renderer redraws only the 8×8 cells whose quadrant content changed.
+- **Self-modifying blitter**: the scanline templates in `TemplateLiteBank1/2.s` are patched per scroll
+  position, and the two banks alternate so one can be drawn while the other is displayed.
+
+### The traps, in one place
+
+- `src/game/` is scratch and holds the *last* game assembled — never edit it, and build one game at a
+  time; the same goes for `palettes.s` / `pal_transitions.s` / `pal_defs.s`, `QuitMode.s`, `QuitScreen.s`
+  and `tiledata.bin`, which `build.js` generates.
+- A `put` only resolves relative to the file that puts it, and a `put` inside a put file is ignored —
+  that is why `pal_transitions.s` / `palettes.s` are put by `Main.s` and why the per-game `ppu/`,
+  `core/`, `rom/` copies under `src/games/alterego/` are inert (see "Which copy is live?" above).
+- Merlin32 rejects nothing about `ENT a,b`/`EXT a,b`; write `label ENT` / `label EXT` or `check-xbank`
+  fails the build.
+- No `XPL` in a link file (compacted load files cannot be loaded by ExpressLoad).
+- Rendering is decoupled from the NES clock (see the debugging rule at the top): describe a bug as
+  missing/incorrect recorded state, not as a frame-boundary race.
+
+
+### Cleanup
+
+- `iigs/CLAUDE.md` deleted; everything operational it said is above.
+- `iigs/tmp/` deleted (545 MB of gitignored scratch: emulator captures, build logs, one-off probe
+  scripts, scratch images).  The tests recreate what they need (`test-alterego.mjs` works in
+  `tmp/test/`).  The one capture worth keeping — the exit screen from 2026-11-04d — is now tracked as
+  `docs/screenshots/exit_screen.png` (704×440, 5,502 B, byte-identical to `tmp/p8test/exit2/t14-crop.png`),
+  so that entry's evidence survives the cleanup.
+
 ## 2026-11-06 — the first release is `v0.0.2` now, with the X16 package as a third asset
 
 「release 的第一個 release 要加 alter-ego-x16-sd.zip, 幫改 (tag也要改 v0.0.2)」.  The one GitHub

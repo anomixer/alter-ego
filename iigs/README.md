@@ -97,8 +97,7 @@ iigs/                                     (sources)
   emu/gsplus-*.kegs      GSplus configuration; s7d1 points at iigs/build/AlterEgo.2mg
   docs/screenshots/      reference captures
   docs/SILKY-GS-UPSTREAM-README.md   upstream silky-gs README
-  AGENTS.md              working log, constraints and next steps
-  CLAUDE.md              upstream engine guide (kept for reference)
+  AGENTS.md              working log, constraints, next steps, and the engine guide (folded in)
 ```
 
 

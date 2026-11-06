@@ -25,7 +25,8 @@ is startup time and headroom, not playability.
 Port sources, if useful: <https://github.com/anomixer/alter-ego>
 - engine-relevant files are under `iigs/`, per-game code is `iigs/src/games/alterego/`
 - `iigs/src/game/` is build scratch, not a source of truth
-- `iigs/AGENTS.md` and `iigs/CLAUDE.md` describe the layout
+- `iigs/AGENTS.md` describes the layout (the engine guide used to be a separate `CLAUDE.md`; it is
+  merged into `AGENTS.md` now)
 
 What we observe in v0.0.2: the sprite compiler is already lazy and cached per (tile, palette,
 flip), dispatched through `SPR_COMP_TBL` with no separate dispatch code, so in steady state a
