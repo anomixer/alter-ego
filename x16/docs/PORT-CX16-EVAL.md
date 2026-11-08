@@ -572,20 +572,31 @@ and on the Apple II VERA build, which share this `main.c`)**.  Two independent f
   `leave_game_to_title()` and only the RESUME/RESTART paths reached `sfx_start(0)` (NES: every
   pause confirm plays `SFX_START`).  Fixed by starting the cue before the branch.
 - RESTART left a drawn-out tone.  The confirm cue is `SFX_START` = 83 SFX source ticks ≈ 1.38 s
-  (`vera/build/ftm_sfx_data.s`), and `loading_tick()` returned early whenever
-  `active_music==255` — the exact state `stop_music()` leaves behind for a restart level read.
-  Music tick and SFX tick were skipped for the whole read, so the PSG voices simply held the
-  note they had reached: the drone, which then hung on under the new level's first notes.  Fixed
-  by ticking SFX on every VSYNC in `loading_tick()` (music stays gated, or the FTM player would
-  resume its disk prefetch in the middle of the read).
+  (`vera/build/ftm_sfx_data.s`).  Two separate things kept a note sounding after the confirm:
+  1. `loading_tick()` returned early whenever `active_music==255` — the exact state
+     `stop_music()` leaves behind for a restart level read.  Music tick and SFX tick were both
+     skipped for the whole read, so on the Apple II builds the SFX stream stopped advancing and
+     the PSG voices simply held the note they had reached.  Fixed by ticking SFX on every VSYNC
+     in `loading_tick()` (music stays gated, or the FTM player would resume its disk prefetch in
+     the middle of the read).
+  2. The X16 asset layer has a worse variant that `loading_tick()` cannot reach: `open()` stages
+     the *whole* level file into VRAM with one KERNAL LOAD under `sei` (`x16/spike/asset_cx16.c`,
+     `ae_stage_vram()`), so there is no point inside the transfer where anything can tick.  On
+     this build the cue's current note was therefore held for the entire staging read — about
+     half a second to a second on HostFS and longer on a real SD card — and was only released by
+     the `sfx_stop()` that ran *after* the load: the drawn-out tail reported for the X16.
+     Fixed by stopping the pending cue at the top of `load_level_file()` under `#ifdef VERA_X16`,
+     i.e. exactly where the ticking stops.  The confirm cue is now heard for the 16-frame fade
+     (≈0.27 s), the staging read is silent, and the level theme starts on the next line.
 
 Cutting the cue needed a stop that the music API did not have: `sfx_stop()` (clear the stream
 pointer and repeat counter, then silence the four SFX voices).  FTM: `_ftm_sfx_stop` in
 `vera/src/a2vera/ftm_sfx_simple.s`, aliased in `music_imports_ftm.s`.  PSG: `sfx_stop_impl()` in
 `music.c`, reached through the overlay at `$1027` (`_sfx_stop` in `music_api.s` /
 `music_imports.s`; it is the tenth entry after `_music_prefetch` at `$1024`, so no existing
-address moved).  RESTART calls it after the level read and before `play_music()`, so the cue is
-heard through the 16-frame fade and the read and is cut exactly where the level theme begins;
+address moved).  The Apple II builds call it after the level read (their 640-byte chunked ProDOS
+reads keep ticking, so the cue really does play through the load) and the X16 build calls it
+before the read; either way it is cut before `play_music()`, i.e. where the level theme begins.
 EXIT GAME starts the cue before the transition and cuts it at the title music.
 
 Fitting it cost memory.  `#ifdef FTM_VERA` covers the X16 build and the Apple II FTM build, and
@@ -596,11 +607,20 @@ exchange words, `exchange_input_lock` (+ `exchange_midair` on the X16).  New map
 `$62F6-$674C`, `FTM_HIGH_BSS` `$93A0-$94BC` (stack lower bound `$94C0`), FTMDATA still `$6750`
 — 3 bytes spare each side; Apple II FTM BSS ends `$674F`, high BSS ends `$94BB`.
 
-Evidence: `vera/build/shots/x16_pause_restart.wav` (pause cue, a clean silent gap of about a
-second for the restart read, then the level theme) and `x16_pause_exit.wav` (confirm cue in the
-fade, then the title screen); the matching screenshots showed the pause menu on RESTART, HUD
-`x4` after the restart and the title after EXIT GAME.  Both `vera/build` images were rebuilt
-after the change.
+Evidence: `vera/build/shots/x16_pause_restart.wav` (re-recorded after the blocking-load fix: the
+confirm cue runs only for the fade, the staging read is digital silence, then the level theme)
+and `x16_pause_exit.wav` (confirm cue in the fade, then the title screen); the matching
+screenshots showed the pause menu on RESTART, HUD `x4` after the restart and the title after
+EXIT GAME.  Both `vera/build` images were rebuilt after the change (the Apple II binaries are
+unchanged: the new stop is X16-only).
+
+Reading a `-Wav` capture of this build: a plateau of two or three sample values at a fixed
+amplitude is a *held* PSG voice, not a recording artefact — the PSG runs autonomously, so a voice
+whose gain is not rewritten simply keeps sounding.  That is what made the pre-fix capture look
+like "one second of silence": it was neither silence nor music, it was the frozen cue note.
+Long silent gaps during a staged LOAD, by contrast, really are silent (verified with SOUND
+muted).  `playtest.ps1 -TailSeconds <n>` keeps the emulator running after the last key so a
+recording actually reaches the new level.
 
 ---
 
@@ -724,7 +744,7 @@ interrupts) rather than game logic.
 | `x16/spike/wavstat.py` | wav header repair + per-segment RMS/peak analysis (the audio evidence captured with `-Wav`, §7.9) |
 | `x16/spike/tritrace.py`, `bytrace.py` | decode `AE_DEBUG_XY` (x/y/pad) and `AE_DEBUG_FALL` (1 byte: `y`+`pad`) `User debug 1` beacons (§7.10) |
 | `x16/tools/shot.ps1` | the automatic screenshot tool (enumerates x16emu's own PID, sets HWND_TOPMOST, avoids the console window) |
-| `x16/tools/playtest.ps1` | the key-injection + screenshot automation script (real scan codes, `KeySequence`, `right+z` held together, hard error when it cannot steal the foreground) |
+| `x16/tools/playtest.ps1` | the key-injection + screenshot automation script (real scan codes, `KeySequence`, `right+z` held together, hard error when it cannot steal the foreground, `-Wav` recording and `-TailSeconds` to keep the emulator alive after the last key) |
 
 **Done**: title-screen rendering, Level 1 loading and rendering, asset loading (lower-case names),
 `read()` address preservation, the X16 keyboard/pad input layer (including the KERNAL IRQ and VSYNC

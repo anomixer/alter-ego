@@ -9,12 +9,22 @@
     RESUME/RESTART reached it (the NES plays `SFX_START` on every pause confirm).
     Fixed by starting the cue before the branch.
   - RESTART's drone: the cue is `SFX_START`, 83 SFX source ticks ≈ 1.38 s
-    (decoded from `vera/build/ftm_sfx_data.s`), and `loading_tick()` returned
-    early whenever `active_music==255` — the state `stop_music()` leaves behind
-    for a restart level read.  No music or SFX tick ran for the whole read, so
-    the PSG voices held their last note and the tail hung under the new level's
-    first notes.  Fixed by ticking SFX every VSYNC in `loading_tick()`; music
-    stays gated, or the FTM player resumes its disk prefetch mid-read.
+    (decoded from `vera/build/ftm_sfx_data.s`).  Two layers kept a note sounding:
+    1. `loading_tick()` returned early whenever `active_music==255` — the state
+       `stop_music()` leaves behind for a restart read.  On this build the read
+       is chunked (640-byte ProDOS reads), so the SFX stream simply stopped
+       advancing and the PSG voices held the note they had reached.  Fixed by
+       ticking SFX every VSYNC in `loading_tick()`; music stays gated, or the
+       FTM player resumes its disk prefetch mid-read.
+    2. The X16 build cannot use `loading_tick()` at all here: its `open()` stages
+       the whole level file into VRAM with a single KERNAL LOAD under `sei`
+       (`x16/spike/asset_cx16.c`, `ae_stage_vram()`), so nothing ticks for the
+       length of the transfer.  The cue's current note was held for the entire
+       staging read (≈0.5-1 s on HostFS, longer on a real SD card) and only
+       released by the `sfx_stop()` that ran after the load — this is the tail
+       the X16 player reported.  Fixed by stopping the pending cue at the top of
+       `load_level_file()` under `#ifdef VERA_X16`; the cue is then heard for the
+       16-frame fade (≈0.27 s) and the staging read is silent.
 - New API to cut the cue: `sfx_stop()`. FTM: `_ftm_sfx_stop` in
   `vera/src/a2vera/ftm_sfx_simple.s` (clear stream pointer and repeat counter,
   then `sfx_silence`), aliased in `music_imports_ftm.s`. PSG: `sfx_stop_impl()`
@@ -22,9 +32,10 @@
   it, `music_imports.s` exports `_sfx_stop := $1027`; it is the tenth entry after
   `_music_prefetch` at `$1024`, and the PSG overlay map confirms STARTUP
   `$1000-$1029`, so no existing address moved).
-- `restart_level()` calls it after `load_level_file()` and before
-  `play_music()`, so the cue is heard through the 16-frame fade and the read and
-  is cut exactly where the level theme starts. `leave_game_to_title()` calls it
+- `restart_level()` calls it after `load_level_file()` on this build (the cue
+  really plays through the chunked read there) and before `load_level_file()` on
+  X16; either way it is cut before `play_music()`, i.e. where the level theme
+  starts.  That call is now `#ifndef VERA_X16`.  `leave_game_to_title()` calls it
   after `stop_music()`, so it does not ring under the title music.
 - `#ifdef FTM_VERA` covers this build and the X16 port, and the extra code pushed
   ONCE past the `$6750` FTM data base: the X16 BSS overflowed by 5 bytes. Seven
@@ -35,11 +46,17 @@
   `$93A0-$94BB` (C stack lower bound `$94C0`); X16 BSS ends `$674C`,
   `FTM_HIGH_BSS` `$93A0-$94BC`.  Re-read both maps after any further edit.
 - Evidence: `vera/build/shots/x16_pause_restart.wav` and `x16_pause_exit.wav`
-  (x16emu `-Wav` captures; untracked `/build`): RESTART shows the pause cue, then
-  about a second of digital silence for the level read, then the level theme;
-  EXIT GAME is audible in the fade and lands on the title.  The X16 screenshots
-  of the same runs showed the pause menu on RESTART, HUD `x4` after the restart
-  and the title after EXIT GAME.
+  (x16emu `-Wav` captures; untracked `/build`), re-recorded after the blocking
+  load fix: the RESTART confirm cue covers the 16-frame fade, the staging read is
+  real digital silence, then the level theme; EXIT GAME is audible in the fade
+  and lands on the title.  The X16 screenshots of the same runs showed the pause
+  menu on RESTART and the title after EXIT GAME.
+- Reading those captures matters: a plateau of two or three sample values at a
+  fixed amplitude is a held PSG voice (the PSG runs autonomously until its gain
+  register is rewritten), which is how the pre-fix restart capture was mistaken
+  for silence.  Genuine silent gaps were cross-checked with SOUND muted.
+  `playtest.ps1 -TailSeconds <n>` keeps the emulator alive after the last key so
+  a recording actually reaches the new level.
 - Both `vera/build` images and the FTM D1/D2 pair were rebuilt: FTM 40 files /
   1162 free blocks, PSG 51 files / 983 free, D1 79 / D2 34.  `pack-sd.ps1` then
   repacked `x16/build/alter-ego-x16-sd.zip`.

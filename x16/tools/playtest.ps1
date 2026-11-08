@@ -5,7 +5,8 @@ param(
   [string]$Stamp = 'play',
   [int]$Step1 = 8,
   [string]$KeySequence = 'enter,right:2,z,enter,enter',
-  [string]$Wav = ''
+  [string]$Wav = '',
+  [int]$TailSeconds = 0
 )
 # Scripted x16emu play test.  Sends real scan-code key events (arrows also need
 # the extended-key flag) and captures one screenshot per step.
@@ -131,6 +132,14 @@ foreach ($item in $KeySequence.Split(',')) {
     Start-Sleep -Milliseconds 900
   }
   Save-Shot $hwnd ("x16\spike\$Stamp-$step-$name.png")
+}
+# Let the game keep running with no keys pressed; useful for listening to what
+# happens after the last input (new level music, stuck SFX voices) and for
+# recordings that need a longer tail.
+if ($TailSeconds -gt 0) {
+  Write-Host "tail $TailSeconds s"
+  Start-Sleep -Seconds $TailSeconds
+  Save-Shot $hwnd ("x16\spike\$Stamp-tail.png")
 }
 } finally {
   # Never leave the emulator alive: its redirected stdout keeps this script's

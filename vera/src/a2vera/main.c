@@ -1086,6 +1086,15 @@ static uint8_t load_level_file(uint8_t level)
 #endif
     filename[2]=(char)('0'+level/10);
     filename[3]=(char)('0'+level%10);
+#ifdef VERA_X16
+    /* open() stages the whole level file with one KERNAL LOAD under sei
+     * (x16/spike/asset_cx16.c), so nothing can tick for the length of the
+     * read: whatever note the SFX stream had reached would be held until the
+     * transfer returns.  Drop the pending cue here, where the ticking stops;
+     * the ProDOS path reads in 640-byte chunks and keeps ticking through
+     * loading_tick(), so it does not need this. */
+    sfx_stop();
+#endif
     fd=open(filename,O_RDONLY);
     if (fd<0) return 0;
     /* Fade-out has left the old scene black. Keep the new map and its full
@@ -1158,10 +1167,13 @@ static void restart_level(void)
     stop_music();
     fade_out();
     if (!load_level_file(current_level)) { game_over=1; return; }
+#ifndef VERA_X16
     /* Cut whatever is left of the menu/start cue before the new level's music
      * starts: the cue is longer than the load, and letting it finish would put
-     * its last notes on top of the level theme. */
+     * its last notes on top of the level theme.  The X16 build already stops
+     * it before the blocking KERNAL LOAD instead (see load_level_file). */
     sfx_stop();
+#endif
     play_music(track);
     vera_oam_init();
     draw_scene_sprites();

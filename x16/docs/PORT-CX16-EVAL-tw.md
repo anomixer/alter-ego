@@ -526,19 +526,27 @@ Apple II 路徑不受影響；建置時用 `$env:AE_X16_TEMPO_TRIM` 覆蓋。
   RESUME／RESTART 會走到 `sfx_start(0)`（NES 是每次暫停確認都播 `SFX_START`）。修法是在
   分支前先把提示音播出來。
 - RESTART 會留下拖著的音。提示音是 `SFX_START`＝83 個 SFX source tick ≈1.38 秒
-  （`vera/build/ftm_sfx_data.s`），而 `loading_tick()` 在 `active_music==255` 時直接 return
-  ——那正是 `stop_music()` 為了重新讀取關卡而留下的狀態。整個讀檔期間 music tick 與
-  SFX tick 都停擺，PSG 語音就維持在它最後到達的那個音：這就是拖尾音，還會蓋到新關卡
-  開頭。修法：`loading_tick()` 每個 VSYNC 都 tick SFX（music 仍維持 gated，否則 FTM
-  player 會在讀檔途中恢復磁碟 prefetch）。
+  （`vera/build/ftm_sfx_data.s`），這裡其實有兩層原因：
+  1. `loading_tick()` 在 `active_music==255` 時直接 return——那正是 `stop_music()` 為了重新
+     讀取關卡而留下的狀態。整個讀檔期間 music tick 與 SFX tick 都停擺，所以 Apple II 版
+     的 PSG 語音就維持在它最後到達的那個音。修法：`loading_tick()` 每個 VSYNC 都 tick
+     SFX（music 仍維持 gated，否則 FTM player 會在讀檔途中恢復磁碟 prefetch）。
+  2. X16 的資產層還更糟，`loading_tick()` 根本碰不到：`open()` 是用一次 KERNAL LOAD（期間
+     `sei`）把整個關卡檔 stage 進 VRAM（`x16/spike/asset_cx16.c` 的 `ae_stage_vram()`），
+     整段搬運中沒有任何地方可以 tick。於是提示音停在當下的那個音，撐過整個 stage 讀取
+     ——HostFS 上約 0.5～1 秒，實機 SD 卡更久——直到讀檔「之後」才被 `sfx_stop()` 放掉：
+     這就是 X16 回報的拖尾音。修法：在 `load_level_file()` 開頭、`#ifdef VERA_X16` 底下先把
+     待播的提示音停掉，也就是 tick 停擺的那個位置。現在確認音只播完 16 frame 的淡出
+     （≈0.27 秒），stage 讀取期間完全無聲，下一行就接關卡曲。
 
 要把提示音「切掉」需要一個音樂 API 本來沒有的 stop：`sfx_stop()`（清掉 stream 指標與
 repeat 計數，再把四個 SFX 語音靜音）。FTM：`vera/src/a2vera/ftm_sfx_simple.s` 的
 `_ftm_sfx_stop`，由 `music_imports_ftm.s` 轉接；PSG：`music.c` 的 `sfx_stop_impl()`，
 經 overlay 的 `$1027`（`music_api.s`／`music_imports.s` 的 `_sfx_stop`；它是
-`_music_prefetch`（`$1024`）之後的第十個入口，既有位址都沒動）。RESTART 在讀完關卡、
-`play_music()` 之前呼叫，所以提示音會在 16 frame 淡出與讀檔期間播完，並在關卡曲開始
-的那一刻被切掉；EXIT GAME 則在轉場前播提示音，到標題曲時切掉。
+`_music_prefetch`（`$1024`）之後的第十個入口，既有位址都沒動）。Apple II 版在讀完關卡
+之後呼叫（它用 640-byte 分塊讀，`loading_tick()` 有在 tick，提示音真的能播過讀檔），
+X16 版則在讀檔之前呼叫；兩者都在 `play_music()` 之前切掉，也就是關卡曲開始的位置。
+EXIT GAME 則在轉場前播提示音，到標題曲時切掉。
 
 塞進去是有代價的。`#ifdef FTM_VERA` 同時涵蓋 X16 版與 Apple II 的 FTM 版，新增的程式碼
 把 ONCE 推過 `$6750` 的 FTM 資料起點——X16 的 BSS 多出 5 bytes。於是搬了七 bytes 的冷門
@@ -548,10 +556,17 @@ repeat 計數，再把四個 SFX 語音靜音）。FTM：`vera/src/a2vera/ftm_sf
 `FTM_HIGH_BSS` `$93A0-$94BC`（堆疊下限 `$94C0`）、FTMDATA 仍是 `$6750`——兩邊各剩 3
 bytes；Apple II FTM 的 BSS 結束在 `$674F`、high BSS 結束在 `$94BB`。
 
-證據：`vera/build/shots/x16_pause_restart.wav`（暫停提示音、重新讀取關卡時約一秒的
-乾淨無聲、接著關卡曲）與 `x16_pause_exit.wav`（淡出期間的確認音、接著標題畫面）；
-對應的截圖顯示暫停選單停在 RESTART、重新開始後 HUD 為 `x4`、EXIT GAME 後回到標題。
-改完之後兩個 `vera/build` 映像都重新建置過。
+證據：`vera/build/shots/x16_pause_restart.wav`（blocking load 修正後重錄：確認音只播完
+淡出、stage 讀取期間是真正的數位無聲、接著關卡曲）與 `x16_pause_exit.wav`（淡出期間的
+確認音、接著標題畫面）；對應的截圖顯示暫停選單停在 RESTART、重新開始後 HUD 為 `x4`、
+EXIT GAME 後回到標題。改完之後兩個 `vera/build` 映像都重新建置過（Apple II 二進位其實
+沒變：新的 stop 是 X16 專用）。
+
+判讀 `-Wav` 錄音時要注意：振幅固定、只有兩三個 sample 值的整段訊號是「被卡住的 PSG
+語音」，不是錄音瑕疵——PSG 是自主發聲，gain 沒被改寫就會一直響。修正前的錄音之所以
+看起來像「約一秒的安靜」，其實既不是安靜也不是音樂，就是那個被凍住的提示音。反之，
+stage 讀取期間的長段無聲是真的無聲（用 SOUND mute 交叉驗證過）。`playtest.ps1
+-TailSeconds <n>` 可以在最後一個按鍵之後讓模擬器多活 n 秒，錄音才收得到新關卡。
 
 
 ---
@@ -669,7 +684,7 @@ X16 的發行形式有三種：
 | `x16/spike/wavstat.py` | wav 修 header + 逐段 RMS/peak 分析（`-Wav` 抓到的音訊證據，§7.9）|
 | `x16/spike/tritrace.py`、`bytrace.py` | 解析 `AE_DEBUG_XY`（x/y/pad）與 `AE_DEBUG_FALL`（1 byte：`y`+`pad`）的 `User debug 1` beacon（§7.10）|
 | `x16/tools/shot.ps1` | 自動截圖工具（列舉 x16emu 自身 PID、設 HWND_TOPMOST，避開 console 窗） |
-| `x16/tools/playtest.ps1` | 送鍵＋截圖的自動化腳本（真實 scan code、`KeySequence`、`right+z` 同時按、前景搶奪失敗會直接報錯） |
+| `x16/tools/playtest.ps1` | 送鍵＋截圖的自動化腳本（真實 scan code、`KeySequence`、`right+z` 同時按、前景搶奪失敗會直接報錯、`-Wav` 錄音、`-TailSeconds` 在最後一鍵之後讓模擬器多活幾秒） |
 
 **已完成**：標題畫面渲染、Level 1 載入與渲染、資產載入（小寫檔名）、
 `read()` 位址保留、X16 鍵盤/手把輸入層（含 KERNAL IRQ 與 VSYNC 節奏修正，§8）、
