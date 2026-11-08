@@ -9,3 +9,4 @@
 .export _sfx_tick := $101E
 .export _music_mute := $1021
 .export _music_prefetch := $1024
+.export _sfx_stop := $1027

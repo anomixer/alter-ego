@@ -551,7 +551,7 @@ The fix (two files):
 
 ## Memory headroom (important)
 
-`x16/spike/game.cfg`'s BSS area now has **6 bytes left** (`BSS` ends at `$6749`, `FTMDATA` starts
+`x16/spike/game.cfg`'s BSS area now has **3 bytes left** (`BSS` ends at `$674C`, `FTMDATA` starts
 at `$6750`; `FTMSFX $819D` and `FTMTABLE $8500` are fixed addresses shared with the `MUSIC`
 overlay — do not move them).  Earlier, the extra code for "T opens the test screen + M/N mutes"
 overflowed BSS (`ld65: Segment 'BSS' overflows memory area 'BSS' by 57 bytes`); the answer was to
@@ -564,8 +564,11 @@ wrap the Apple II dead code the X16 does not use (`KEYBOARD`/`KBDSTRB`/`keyboard
 CODE; the C version of "the mirrored spot needs floor" (about 38 bytes) then blew BSS up, so it
 was rewritten as hand-written assembly in `x16/spike/gate_cx16.s` and placed in the main-RAM hole
 `$92DC` via a new `GATE` segment in `game.cfg` (`FTMTABLE` ends at `$92DB`, `FTM_HIGH_BSS` starts
-at `$93A0`, 196 bytes).  Now `CODE` ends at `$5A67` and `BSS` at `$6749`, **6 bytes left**; `GATE`
-occupies `$92DC-$933A` (95 bytes).  Beacons like `AE_DEBUG_XY`/`AE_DEBUG_FALL` no longer fit — to
+at `$93A0`, 196 bytes).  Now `CODE` ends at `$5A72` and `BSS` at `$674C`, **3 bytes left**; `GATE`
+occupies `$92DC-$933A` (95 bytes).  2026-11-08's pause-menu audio fix (SFX ticks during the level
+read plus a new `sfx_stop()`) pushed `ONCE` up by 5 bytes and overflowed BSS again; seven bytes of
+cold state (eight on the X16, which also moves `exchange_midair`) went to `FTM_HIGH_BSS` with
+`#pragma bss-name` (now `$93A0-$94BC`, 3 bytes left before the C stack at `$94C0`).  Beacons like `AE_DEBUG_XY`/`AE_DEBUG_FALL` no longer fit — to
 debug you have to cut dead code first or find another hole (`$83F2-$83FF` 14 bytes and
 `$933B-$939F` about 100 bytes are still free).
 Before adding features, check that `ld65` does not overflow; otherwise cut dead code or adjust the

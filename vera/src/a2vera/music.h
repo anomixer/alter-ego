@@ -12,6 +12,7 @@ void music_stop(void);
 void __fastcall__ music_pause(unsigned char pause);
 void __fastcall__ music_mute(unsigned char mute);
 void __fastcall__ sfx_start(unsigned char effect);
+void sfx_stop(void);
 void __fastcall__ sfx_mute(unsigned char mute);
 void sfx_tick(void);
 

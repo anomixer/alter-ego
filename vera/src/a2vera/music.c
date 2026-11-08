@@ -131,7 +131,7 @@ static void sfx_cache_tick(void)
     sfx_cache_length=(uint16_t)(sfx_cache_length+(uint16_t)n);
 }
 
-static void sfx_stop_impl(void)
+void sfx_stop_impl(void)
 {
     sfx_active=0;
     sfx_pos=sfx_end=0;

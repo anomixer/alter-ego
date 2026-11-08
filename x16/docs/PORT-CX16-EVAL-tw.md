@@ -519,6 +519,40 @@ X16 這一版是 NES 原生的 60 source tick/s，但使用者聽感仍偏慢一
 `music_tick_impl()` 內用 8-bit 累加器，滿 256 就多打一次 tick，長期沒有漂移。
 Apple II 路徑不受影響；建置時用 `$env:AE_X16_TEMPO_TRIM` 覆蓋。
 
+**暫停選單音效：EXIT GAME 沒聲音、RESTART 拖尾音（2026-11-08，X16 版與共用同一份
+`main.c` 的 Apple II VERA 版同時回報）**。同一條路徑上其實有兩個獨立毛病：
+
+- EXIT GAME 完全沒播提示音：暫停選單的確認分支直接跳去 `leave_game_to_title()`，只有
+  RESUME／RESTART 會走到 `sfx_start(0)`（NES 是每次暫停確認都播 `SFX_START`）。修法是在
+  分支前先把提示音播出來。
+- RESTART 會留下拖著的音。提示音是 `SFX_START`＝83 個 SFX source tick ≈1.38 秒
+  （`vera/build/ftm_sfx_data.s`），而 `loading_tick()` 在 `active_music==255` 時直接 return
+  ——那正是 `stop_music()` 為了重新讀取關卡而留下的狀態。整個讀檔期間 music tick 與
+  SFX tick 都停擺，PSG 語音就維持在它最後到達的那個音：這就是拖尾音，還會蓋到新關卡
+  開頭。修法：`loading_tick()` 每個 VSYNC 都 tick SFX（music 仍維持 gated，否則 FTM
+  player 會在讀檔途中恢復磁碟 prefetch）。
+
+要把提示音「切掉」需要一個音樂 API 本來沒有的 stop：`sfx_stop()`（清掉 stream 指標與
+repeat 計數，再把四個 SFX 語音靜音）。FTM：`vera/src/a2vera/ftm_sfx_simple.s` 的
+`_ftm_sfx_stop`，由 `music_imports_ftm.s` 轉接；PSG：`music.c` 的 `sfx_stop_impl()`，
+經 overlay 的 `$1027`（`music_api.s`／`music_imports.s` 的 `_sfx_stop`；它是
+`_music_prefetch`（`$1024`）之後的第十個入口，既有位址都沒動）。RESTART 在讀完關卡、
+`play_music()` 之前呼叫，所以提示音會在 16 frame 淡出與讀檔期間播完，並在關卡曲開始
+的那一刻被切掉；EXIT GAME 則在轉場前播提示音，到標題曲時切掉。
+
+塞進去是有代價的。`#ifdef FTM_VERA` 同時涵蓋 X16 版與 Apple II 的 FTM 版，新增的程式碼
+把 ONCE 推過 `$6750` 的 FTM 資料起點——X16 的 BSS 多出 5 bytes。於是搬了七 bytes 的冷門
+狀態（X16 是八 bytes，`VERA_X16` 多了 `exchange_midair`）到 `FTM_HIGH_BSS`，用
+`#pragma bss-name`：`level_fade_frame`、`bridge_dropped`、三個 exchange 變數、
+`exchange_input_lock`（X16 再加 `exchange_midair`）。新 map：X16 BSS `$62F6-$674C`、
+`FTM_HIGH_BSS` `$93A0-$94BC`（堆疊下限 `$94C0`）、FTMDATA 仍是 `$6750`——兩邊各剩 3
+bytes；Apple II FTM 的 BSS 結束在 `$674F`、high BSS 結束在 `$94BB`。
+
+證據：`vera/build/shots/x16_pause_restart.wav`（暫停提示音、重新讀取關卡時約一秒的
+乾淨無聲、接著關卡曲）與 `x16_pause_exit.wav`（淡出期間的確認音、接著標題畫面）；
+對應的截圖顯示暫停選單停在 RESTART、重新開始後 HUD 為 `x4`、EXIT GAME 後回到標題。
+改完之後兩個 `vera/build` 映像都重新建置過。
+
 
 ---
 
@@ -552,7 +586,7 @@ X16 的發行形式有三種：
 | 節奏（60 Hz 模擬 vs 8 MHz） | **已解決**：VSYNC IRQ frame counter、`logic_delta=1`、每 frame 一個音樂 tick（§8） |
 | `$9F00-$9FFF` 越界 | **已解決**：cfg 限制在 `$2000-$9400`，每次 build 檢查 map |
 | 資產格式 | 無風險：VERA 4bpp tile/palette 與 Apple II 版是同一個二進位，直接複製 |
-| 記憶體 | **高**：主 RAM 只剩 6 bytes（CODE `$5A67`／BSS `$6749`），新功能得先找空隙或砍死碼（`x16/README.md` 的 "Memory headroom"；中文原文 `x16/readme-tw.md` 的「記憶體餘裕」）|
+| 記憶體 | **高**：主 RAM 只剩 3 bytes（CODE `$5A72`／BSS `$674C`），新功能得先找空隙或砍死碼（`x16/README.md` 的 "Memory headroom"；中文原文 `x16/readme-tw.md` 的「記憶體餘裕」）|
 
 ---
 

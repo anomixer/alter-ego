@@ -6,6 +6,7 @@ import {compileApplesoftBasic} from './applebasic.mjs'
 
 const root=path.resolve(path.dirname(fileURLToPath(import.meta.url)),'..','..')
 const build=path.join(root,'vera','build')
+const a2=path.join(root,'vera','src','a2vera')
 const cadius=path.join(root,'vera','tools','cadius.exe')
 const hdv=path.join(build,'alter-ego-vera.hdv')
 const disks=[
@@ -27,13 +28,13 @@ try {
   if(byName.size!==40) throw new Error(`Expected 40 FTM files, found ${byName.size}`)
   for(const name of bootFiles) if(!byName.has(name))
     throw new Error(`FTM HDV is missing ${name}`)
-  const startup=compileApplesoftBasic(path.join(root,'src','a2vera'),'startup_floppy.bas')
+  const startup=compileApplesoftBasic(a2,'startup_floppy.bas')
   fs.writeFileSync(path.join(stage,'ALTER.EGO',byName.get('STARTUP')),startup)
   const readyName='D2READY#040000'
   fs.writeFileSync(path.join(stage,'ALTER.EGO',readyName),Buffer.from('ALTER EGO DISK 2\r'))
   byName.set('D2READY',readyName)
 
-  const bootBlocks=fs.readFileSync(path.join(root,'src','a2vera','prodos','boot_blocks.bin'))
+  const bootBlocks=fs.readFileSync(path.join(a2,'prodos','boot_blocks.bin'))
   if(bootBlocks.length!==1024) throw new Error('Invalid ProDOS boot block template')
   for(const disk of disks) {
     if(fs.existsSync(disk.file)) fs.unlinkSync(disk.file)

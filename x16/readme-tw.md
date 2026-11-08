@@ -489,7 +489,7 @@ X16 KERNAL 的 60 Hz IRQ（jiffy 時鐘 + 鍵盤掃描）來源就是 **VERA VSY
 
 ## 記憶體餘裕（很重要）
 
-`x16/spike/game.cfg` 的 BSS 區間現在**只剩 6 bytes**（`BSS` 結束在 `$6749`，
+`x16/spike/game.cfg` 的 BSS 區間現在**只剩 3 bytes**（`BSS` 結束在 `$674C`，
 `FTMDATA` 從 `$6750` 開始；`FTMSFX $819D`、`FTMTABLE $8500` 是跟 `MUSIC` overlay
 共用的固定位置，不要搬）。先前就是因為「T 開測試畫面 + M/N 靜音」多出來的程式碼
 把 BSS 撐爆（`ld65: Segment 'BSS' overflows memory area 'BSS' by 57 bytes`），
@@ -502,8 +502,11 @@ X16 KERNAL 的 60 Hz IRQ（jiffy 時鐘 + 鍵盤掃描）來源就是 **VERA VSY
 CODE；接著「鏡像點要有地板」的 C 版判斷（約 38 bytes）直接把 BSS 撐爆，所以改寫成
 手寫組語 `x16/spike/gate_cx16.s`，用 `game.cfg` 的新段 `GATE` 放到主 RAM 區的
 空隙 `$92DC`（`FTMTABLE` 結束 `$92DB`、`FTM_HIGH_BSS` 開始 `$93A0`，共 196 bytes）。
-現在 `CODE` 結束在 `$5A67`、`BSS` 結束在 `$6749`，**只剩 6 bytes**；`GATE` 佔
-`$92DC-$933A`（95 bytes）。`AE_DEBUG_XY`／`AE_DEBUG_FALL` 這類 beacon 已經塞不
+現在 `CODE` 結束在 `$5A72`、`BSS` 結束在 `$674C`，**只剩 3 bytes**；`GATE` 佔
+`$92DC-$933A`（95 bytes）。2026-11-08 的暫停選單音效修正（讀檔期間照樣 tick SFX，外加
+新的 `sfx_stop()`）又把 `ONCE` 往上推 5 bytes、BSS 再次撐爆；於是七 bytes 的冷門狀態
+（X16 是八 bytes，多搬 `exchange_midair`）用 `#pragma bss-name` 移到 `FTM_HIGH_BSS`
+（現在 `$93A0-$94BC`，距 C 堆疊下限 `$94C0` 只剩 3 bytes）。`AE_DEBUG_XY`／`AE_DEBUG_FALL` 這類 beacon 已經塞不
 進去，要除錯得先砍死碼或再找空隙（`$83F2-$83FF` 14 bytes、`$933B-$939F` 約
 100 bytes 還留著）。
 之後要再加功能，先確認 `ld65` 沒有 overflow，否則得再砍死碼或調 cfg。

@@ -7,7 +7,8 @@
 .export _music_pause := $1015
 .export _music_mute := $1021
 .export _music_prefetch := $1024
-.import _ftm_sfx_start, _ftm_sfx_mute, _ftm_sfx_tick
+.import _ftm_sfx_start, _ftm_sfx_mute, _ftm_sfx_tick, _ftm_sfx_stop
 .export _sfx_start := _ftm_sfx_start
 .export _sfx_mute := _ftm_sfx_mute
 .export _sfx_tick := _ftm_sfx_tick
+.export _sfx_stop := _ftm_sfx_stop

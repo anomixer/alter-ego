@@ -104,9 +104,15 @@ static uint8_t level_palette[64],pause_palette[64],fade_palette[64];
 #ifdef FTM_VERA
 #pragma bss-name (pop)
 #endif
+#ifdef FTM_VERA
+/* Main BSS has to end below the FTM data base at $6750.  These bytes of
+ * rarely touched state live in the high-BSS hole above the OAM shadow
+ * ($93A0 upward) instead; with them in main BSS the X16 image runs over
+ * the FTM data base by 5 bytes. */
+#pragma bss-name (push, "FTM_HIGH_BSS")
+#endif
 static uint8_t level_fade_frame;
 static uint8_t bridge_dropped;
-static uint8_t alter_anim_state=0xA5;
 static uint8_t exchange_left,exchange_active,exchange_x,exchange_y;
 static uint8_t exchange_input_lock;
 #ifdef VERA_X16
@@ -114,6 +120,10 @@ static uint8_t exchange_input_lock;
  * re-anchored to the tile grid or it can sink into the mirrored column. */
 static uint8_t exchange_midair;
 #endif
+#ifdef FTM_VERA
+#pragma bss-name (pop)
+#endif
+static uint8_t alter_anim_state=0xA5;
 static uint8_t player_dead,death_frames;
 static uint8_t lives_remaining=5,game_over;
 static uint8_t gameover_music_started;
@@ -1148,6 +1158,10 @@ static void restart_level(void)
     stop_music();
     fade_out();
     if (!load_level_file(current_level)) { game_over=1; return; }
+    /* Cut whatever is left of the menu/start cue before the new level's music
+     * starts: the cue is longer than the load, and letting it finish would put
+     * its last notes on top of the level theme. */
+    sfx_stop();
     play_music(track);
     vera_oam_init();
     draw_scene_sprites();
@@ -1397,6 +1411,9 @@ static void leave_game_to_title(void)
     set_level_palette(0);
     fade_out();
     stop_music();
+    /* Same rule as restart_level: the confirm cue must not ring on under the
+     * title music. */
+    sfx_stop();
     lives_remaining=5;
     game_over=0;
     gameover_music_started=0;
@@ -1457,14 +1474,19 @@ static void update_enemy_eyes(void)
 static void loading_tick(void)
 {
     uint8_t vsync,lo,mid,hi;
-    if (active_music==255) return;
+    /* Effects keep ticking while a level loads.  SFX_START is 83 source ticks
+     * (about 1.4 s), longer than a HostFS/ProDOS read: with no tick the PSG
+     * voices hold whatever note the stream had reached for the whole read,
+     * which is the drawn-out tail heard after picking RESTART.  Music stays
+     * gated on active_music: it is stopped during the load, and the PSG player
+     * would otherwise resume its disk prefetch in the middle of the read. */
     vsync=(uint8_t)(VERA_ISR&0x01);
-    if (vsync) {
-        lo=VERA_ADDR_L; mid=VERA_ADDR_M; hi=VERA_ADDR_H;
-        music_tick(); sfx_tick();
-        VERA_ADDR_L=lo; VERA_ADDR_M=mid; VERA_ADDR_H=hi;
-        VERA_ISR=0x01;
-    }
+    if (!vsync) return;
+    lo=VERA_ADDR_L; mid=VERA_ADDR_M; hi=VERA_ADDR_H;
+    if (active_music!=255) music_tick();
+    sfx_tick();
+    VERA_ADDR_L=lo; VERA_ADDR_M=mid; VERA_ADDR_H=hi;
+    VERA_ISR=0x01;
 }
 
 static void palette_scale(const uint8_t *p,uint8_t scale)
@@ -1716,6 +1738,10 @@ void main(void)
             sfx_tick();
             if (pad&PAD_START) {
                 if (pause_choice==2 || (pause_choice==1 && !lives_remaining)) {
+                    /* The NES confirm cue (SFX_START) belongs to this path too;
+                     * it used to be skipped, so EXIT GAME left the menu in
+                     * silence. */
+                    sfx_start(0);
                     leave_game_to_title();
                     continue;
                 }

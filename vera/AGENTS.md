@@ -1,5 +1,52 @@
 # AGENTS.md — alter-ego Apple II VERA port
 
+## Pause-menu confirm cues (2026-11-08)
+
+- Report, on both the X16 port and this build (they share `vera/src/a2vera/main.c`):
+  the pause menu's **EXIT GAME** played no cue, and **RESTART** left a drawn-out
+  tone. Two separate faults in the same path:
+  - EXIT GAME returned to the title without ever calling `sfx_start(0)`; only
+    RESUME/RESTART reached it (the NES plays `SFX_START` on every pause confirm).
+    Fixed by starting the cue before the branch.
+  - RESTART's drone: the cue is `SFX_START`, 83 SFX source ticks ≈ 1.38 s
+    (decoded from `vera/build/ftm_sfx_data.s`), and `loading_tick()` returned
+    early whenever `active_music==255` — the state `stop_music()` leaves behind
+    for a restart level read.  No music or SFX tick ran for the whole read, so
+    the PSG voices held their last note and the tail hung under the new level's
+    first notes.  Fixed by ticking SFX every VSYNC in `loading_tick()`; music
+    stays gated, or the FTM player resumes its disk prefetch mid-read.
+- New API to cut the cue: `sfx_stop()`. FTM: `_ftm_sfx_stop` in
+  `vera/src/a2vera/ftm_sfx_simple.s` (clear stream pointer and repeat counter,
+  then `sfx_silence`), aliased in `music_imports_ftm.s`. PSG: `sfx_stop_impl()`
+  in `music.c`, exported through the overlay at `$1027` (`music_api.s` imports
+  it, `music_imports.s` exports `_sfx_stop := $1027`; it is the tenth entry after
+  `_music_prefetch` at `$1024`, and the PSG overlay map confirms STARTUP
+  `$1000-$1029`, so no existing address moved).
+- `restart_level()` calls it after `load_level_file()` and before
+  `play_music()`, so the cue is heard through the 16-frame fade and the read and
+  is cut exactly where the level theme starts. `leave_game_to_title()` calls it
+  after `stop_music()`, so it does not ring under the title music.
+- `#ifdef FTM_VERA` covers this build and the X16 port, and the extra code pushed
+  ONCE past the `$6750` FTM data base: the X16 BSS overflowed by 5 bytes. Seven
+  bytes of cold state (X16 eight: `VERA_X16` also moves `exchange_midair`) moved
+  from the main BSS to `FTM_HIGH_BSS` with `#pragma bss-name` — `level_fade_frame`,
+  `bridge_dropped`, `exchange_left/active/x/y`, `exchange_input_lock`.  Current
+  maps: this build BSS ends `$674F` (`FTMDATA` `$6750`), `FTM_HIGH_BSS`
+  `$93A0-$94BB` (C stack lower bound `$94C0`); X16 BSS ends `$674C`,
+  `FTM_HIGH_BSS` `$93A0-$94BC`.  Re-read both maps after any further edit.
+- Evidence: `vera/build/shots/x16_pause_restart.wav` and `x16_pause_exit.wav`
+  (x16emu `-Wav` captures; untracked `/build`): RESTART shows the pause cue, then
+  about a second of digital silence for the level read, then the level theme;
+  EXIT GAME is audible in the fade and lands on the title.  The X16 screenshots
+  of the same runs showed the pause menu on RESTART, HUD `x4` after the restart
+  and the title after EXIT GAME.
+- Both `vera/build` images and the FTM D1/D2 pair were rebuilt: FTM 40 files /
+  1162 free blocks, PSG 51 files / 983 free, D1 79 / D2 34.  `pack-sd.ps1` then
+  repacked `x16/build/alter-ego-x16-sd.zip`.
+- `vera/tools/a2vera_ftm_floppy_pack.mjs` had been broken by the 2026-11-02 move
+  (`src/a2vera/...` paths, so `AE2VERA_FTM_FLOPPY=1` died at `startup_floppy.bas`);
+  it now uses `vera/src/a2vera` and packs the pair again.
+
 ## Default image is FamiTone (2026-11-03)
 
 - `vera/build/build_a2vera.ps1` now builds the live FamiTone image by default:

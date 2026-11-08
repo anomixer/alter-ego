@@ -565,6 +565,43 @@ build is at the NES's native 60 source ticks/s, but the player still felt it sli
 is no long-term drift.  The Apple II path is unaffected; override it at build time with
 `$env:AE_X16_TEMPO_TRIM`.
 
+**Pause-menu cues: EXIT GAME was silent, RESTART droned (2026-11-08, reported on the X16 build
+and on the Apple II VERA build, which share this `main.c`)**.  Two independent faults in one path:
+
+- EXIT GAME played no cue at all: the pause-confirm branch jumped straight to
+  `leave_game_to_title()` and only the RESUME/RESTART paths reached `sfx_start(0)` (NES: every
+  pause confirm plays `SFX_START`).  Fixed by starting the cue before the branch.
+- RESTART left a drawn-out tone.  The confirm cue is `SFX_START` = 83 SFX source ticks ≈ 1.38 s
+  (`vera/build/ftm_sfx_data.s`), and `loading_tick()` returned early whenever
+  `active_music==255` — the exact state `stop_music()` leaves behind for a restart level read.
+  Music tick and SFX tick were skipped for the whole read, so the PSG voices simply held the
+  note they had reached: the drone, which then hung on under the new level's first notes.  Fixed
+  by ticking SFX on every VSYNC in `loading_tick()` (music stays gated, or the FTM player would
+  resume its disk prefetch in the middle of the read).
+
+Cutting the cue needed a stop that the music API did not have: `sfx_stop()` (clear the stream
+pointer and repeat counter, then silence the four SFX voices).  FTM: `_ftm_sfx_stop` in
+`vera/src/a2vera/ftm_sfx_simple.s`, aliased in `music_imports_ftm.s`.  PSG: `sfx_stop_impl()` in
+`music.c`, reached through the overlay at `$1027` (`_sfx_stop` in `music_api.s` /
+`music_imports.s`; it is the tenth entry after `_music_prefetch` at `$1024`, so no existing
+address moved).  RESTART calls it after the level read and before `play_music()`, so the cue is
+heard through the 16-frame fade and the read and is cut exactly where the level theme begins;
+EXIT GAME starts the cue before the transition and cuts it at the title music.
+
+Fitting it cost memory.  `#ifdef FTM_VERA` covers the X16 build and the Apple II FTM build, and
+the extra code pushed ONCE past the `$6750` FTM data base — X16 BSS overflowed by 5 bytes.
+Seven bytes of cold state (X16 eight, `VERA_X16` adds `exchange_midair`) moved out of the main
+BSS into `FTM_HIGH_BSS` via `#pragma bss-name`: `level_fade_frame`, `bridge_dropped`, the three
+exchange words, `exchange_input_lock` (+ `exchange_midair` on the X16).  New maps: X16 BSS
+`$62F6-$674C`, `FTM_HIGH_BSS` `$93A0-$94BC` (stack lower bound `$94C0`), FTMDATA still `$6750`
+— 3 bytes spare each side; Apple II FTM BSS ends `$674F`, high BSS ends `$94BB`.
+
+Evidence: `vera/build/shots/x16_pause_restart.wav` (pause cue, a clean silent gap of about a
+second for the restart read, then the level theme) and `x16_pause_exit.wav` (confirm cue in the
+fade, then the title screen); the matching screenshots showed the pause menu on RESTART, HUD
+`x4` after the restart and the title after EXIT GAME.  Both `vera/build` images were rebuilt
+after the change.
+
 ---
 
 ## 9. Packaging and releases
@@ -598,7 +635,7 @@ Suggested release names follow `vera/`'s `alter-ego-vera*` convention (e.g. `alt
 | Cadence (60 Hz emulation vs 8 MHz) | **Resolved**: VSYNC IRQ frame counter, `logic_delta=1`, one music tick per frame (§8) |
 | Straying into `$9F00-$9FFF` | **Resolved**: the config confines it to `$2000-$9400`, and every build checks the map |
 | Asset formats | No risk: the VERA 4bpp tile/palette binaries are the same as the Apple II build's, copied straight over |
-| Memory | **High**: only 6 bytes of main RAM left (CODE `$5A67` / BSS `$6749`), so new features first need a hole or dead code cut (see "Memory headroom" in `x16/README.md`) |
+| Memory | **High**: only 3 bytes of main RAM left (CODE `$5A72` / BSS `$674C`), so new features first need a hole or dead code cut (see "Memory headroom" in `x16/README.md`) |
 
 ---
 

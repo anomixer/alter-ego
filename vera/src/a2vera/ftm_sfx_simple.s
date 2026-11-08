@@ -22,7 +22,7 @@ sfx_base:  .res 1
 sfx_voice: .res 1
 
 .segment "FTMSFX"
-.export _ftm_sfx_start, _ftm_sfx_tick, _ftm_sfx_mute
+.export _ftm_sfx_start, _ftm_sfx_tick, _ftm_sfx_mute, _ftm_sfx_stop
 sfx_muted: .res 1
 
 _ftm_sfx_start:
@@ -269,6 +269,17 @@ _ftm_sfx_mute:
         beq @mute_done
         jsr sfx_silence
 @mute_done:
+        rts
+
+; Cut a running stream and zero its four voices.  The game calls this when a
+; transition ends the current cue (restart, exit to title), so a 1.4 s cue
+; cannot keep sounding through the disk load or over the next level's music.
+_ftm_sfx_stop:
+        lda #0
+        sta sfx_ptr
+        sta sfx_ptr+1
+        sta sfx_repeat
+        jsr sfx_silence
         rts
 
 sfx_silence:
