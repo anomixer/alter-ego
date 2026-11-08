@@ -622,6 +622,10 @@ Long silent gaps during a staged LOAD, by contrast, really are silent (verified 
 muted).  `playtest.ps1 -TailSeconds <n>` keeps the emulator running after the last key so a
 recording actually reaches the new level.
 
+The browser player (§9, release form 3) runs this same binary, so the RESTART fix is in it with
+no separate change — its emulated HostFS read is faster than a HostFS/SD read, so the frozen note
+used to be shorter there, but it is cut at the same point now.
+
 ---
 
 ## 9. Packaging and releases
@@ -642,6 +646,20 @@ The X16 has three release forms:
 
 Suggested release names follow `vera/`'s `alter-ego-vera*` convention (e.g. `alter-ego-x16.prg` +
 `alter-ego-x16.zip`), without renaming any existing release.
+
+Release form 3 is not a fork of the build: it ships `x16/spike/dist/` verbatim, and
+`.github/workflows/deploy-web.yml` triggers on `x16/spike/dist/**`, so any X16 fix that lands a
+rebuilt `GAME` is redeployed automatically.  Do not assume that, though — check the deployed
+binary, because the site renames files to lower case:
+
+```powershell
+Invoke-WebRequest https://anomixer.github.io/alter-ego/x16/game/game -OutFile tmp\web-game
+(Get-FileHash x16\spike\dist\GAME).Hash -eq (Get-FileHash tmp\web-game).Hash
+```
+
+Verified for `feb4c1b` (the RESTART-cue fix): workflow run `42466205760` succeeded and the
+deployed `x16/game/game` hashes to `0398F06A…0B65`, identical to the local `GAME`.
+
 
 ---
 

@@ -60,6 +60,14 @@
 - Both `vera/build` images and the FTM D1/D2 pair were rebuilt: FTM 40 files /
   1162 free blocks, PSG 51 files / 983 free, D1 79 / D2 34.  `pack-sd.ps1` then
   repacked `x16/build/alter-ego-x16-sd.zip`.
+- The browser player (`web/x16/` on GitHub Pages) is not a separate port: it
+  ships `x16/spike/dist/` verbatim (lower-case names), and
+  `.github/workflows/deploy-web.yml` triggers on `x16/spike/dist/**`.  So an X16
+  fix reaches the wasm build by pushing the rebuilt `GAME` — verify the deployed
+  copy instead of trusting the green workflow:
+  `Invoke-WebRequest https://anomixer.github.io/alter-ego/x16/game/game -OutFile tmp\web-game`
+  then compare `(Get-FileHash x16\spike\dist\GAME).Hash`.  For `feb4c1b` both
+  hashes are `0398F06A…0B65` (workflow run `42466205760` succeeded).
 - `vera/tools/a2vera_ftm_floppy_pack.mjs` had been broken by the 2026-11-02 move
   (`src/a2vera/...` paths, so `AE2VERA_FTM_FLOPPY=1` died at `startup_floppy.bas`);
   it now uses `vera/src/a2vera` and packs the pair again.

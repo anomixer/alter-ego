@@ -160,6 +160,19 @@ Everything lives in `web/x16/`:
 4. `web/build-site.mjs` (run by the GitHub Pages workflow) packs the two together into
    `web/_site/x16/`, and the landing page `web/index.html` gained a "Commander X16" card.
 
+The browser player is not a separate port: it runs the **same** `x16/spike/dist/` binary, so an
+X16 fix reaches it automatically.  `.github/workflows/deploy-web.yml` triggers on
+`x16/spike/dist/**`, rebuilds the site and deploys it, so pushing a rebuilt `GAME` is enough;
+verify the deployed copy instead of trusting the workflow:
+
+```powershell
+Invoke-WebRequest https://anomixer.github.io/alter-ego/x16/game/game -OutFile tmp\web-game
+(Get-FileHash x16\spike\dist\GAME).Hash -eq (Get-FileHash tmp\web-game).Hash   # -> True
+```
+
+The files are lower case on the site, so the deployed game binary is `x16/game/game` (not
+`GAME`), and `x16/game/manifest.json` lists everything the player fetches.
+
 How to verify it (no manual clicking required):
 
 - Locally: `node web/build-site.mjs` produces `web/_site/`; serve it with any static server and

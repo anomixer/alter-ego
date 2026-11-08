@@ -589,6 +589,22 @@ X16 的發行形式有三種：
 建議發行名沿用 `vera/` 的 `alter-ego-vera*` 命名規則（例如 `alter-ego-x16.prg` +
 `alter-ego-x16.zip`），不要改動既有 release 名稱。
 
+第 3 種發行形式不是另外一份移植：它原封不動地跑 `x16/spike/dist/`，而
+`.github/workflows/deploy-web.yml` 的觸發條件包含 `x16/spike/dist/**`，所以只要 X16 的
+修正有把重build 的 `GAME` 推上去，瀏覽器版就會自動重新部署。不過不要只憑這點假設，直接
+比對線上那份（站上檔名一律小寫）：
+
+```powershell
+Invoke-WebRequest https://anomixer.github.io/alter-ego/x16/game/game -OutFile tmp\web-game
+(Get-FileHash x16\spike\dist\GAME).Hash -eq (Get-FileHash tmp\web-game).Hash
+```
+
+`feb4c1b`（RESTART 提示音修正）已驗證：workflow run `42466205760` 成功，線上的
+`x16/game/game` 是 `0398F06A…0B65`，與本機 `GAME` 完全相同。
+
+瀏覽器版（§9 第 3 種形式）跑的就是這個 binary，所以 RESTART 的修正不用另外改就在裡面；
+它的 HostFS 讀取比實機/HostFS 快，所以以前被凍住的音比較短，但現在一樣在同一個位置切掉。
+
 ---
 
 ## 10. 風險清單

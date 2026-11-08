@@ -141,6 +141,18 @@ x16emu -prg <scratch>\LOADER.PRG -run -fsroot <scratch>
 4. `web/build-site.mjs`（GitHub Pages workflow 會執行它）把上面兩者打包成
    `web/_site/x16/`，首頁 `web/index.html` 多一張 "Commander X16" 卡片。
 
+瀏覽器版不是另外一份移植：它跑的是**同一份** `x16/spike/dist/`，所以 X16 的修正會自動
+帶過去。`.github/workflows/deploy-web.yml` 的觸發條件包含 `x16/spike/dist/**`，重新建置
+後推上去就會重新部署；要確認請直接比對線上那份，不要只看 workflow 綠燈：
+
+```powershell
+Invoke-WebRequest https://anomixer.github.io/alter-ego/x16/game/game -OutFile tmp\web-game
+(Get-FileHash x16\spike\dist\GAME).Hash -eq (Get-FileHash tmp\web-game).Hash   # -> True
+```
+
+站上的檔名一律小寫，所以線上的執行檔是 `x16/game/game`（不是 `GAME`），
+`x16/game/manifest.json` 列出播放器會抓的所有檔案。
+
 驗證方式（不必人工點按也能看）：
 
 - 本機：`node web/build-site.mjs` 產生 `web/_site/`，用任何靜態伺服器開
