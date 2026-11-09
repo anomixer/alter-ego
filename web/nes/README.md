@@ -14,6 +14,8 @@ web/nes/
   capture.mjs         headless run -> PNG captures (frame-by-frame inspection)
   test.mjs            smoke test: boot -> title -> Start -> Level 1, checked on pixels
   png.mjs             tiny PNG writer (no npm dependencies)
+  make-logo.mjs       cuts the site's ALTER EGO mark out of the title screen
+  make-favicon.mjs    draws the site favicons from the player sprite
   build/              generated, gitignored
 ```
 
@@ -72,6 +74,17 @@ background.  The words keep the title's own columns but are moved up to a common
 is a single line (206×39) with the title's 17 px gap between ALTER and EGO.  Re-run
 `node web/nes/make-logo.mjs` (`--report` prints what it kept and dropped) if the
 title art ever changes; `png.mjs` has `writePngRgba` for the alpha.
+
+The three pages share one favicon — the protagonist, again cut from the game's own art by
+[`make-favicon.mjs`](make-favicon.mjs) into `web/assets/favicon-16.png` and `favicon-32.png`.  The active
+ego is two stacked 8×8 tiles (`0x90` idle and `0x90+0x10` in `src/tileset.chr`) drawn with OAM attribute
+1, i.e. sprite palette 1 `{0x0F,0x30,0x21,0x11}`: a white face and hands, blue eyes and light-blue
+clothes.  The colours are those three indices as the ports map NES colours (`iigs/src/rom/rom_color.s`,
+`NES_ColorPalette`: `0x30`=$0FFF, `0x21`=$07BF, `0x11`=$007E) — the web player's own emulator table puts
+`0x21`/`0x11` on an orange ramp, which is why the NES page's frames show an orange-clothed figure while
+the X16 and IIgs ports and this icon show the blue one.  The empty rows of the idle tile are trimmed and
+the 7×11 result is centred pixel-exact at 1× in 16×16 and 2× in 32×32, black being transparent.  Re-run
+`node web/nes/make-favicon.mjs` if the player art changes; `build-site.mjs` publishes both sizes.
 
 The cc65 package on Linux keeps `nes.lib` outside `bin/` (`/usr/share/cc65/lib/nes.lib`), so
 `build-rom.mjs` accepts `CC65_LIB` and otherwise tries the usual Linux/macOS locations; the workflow

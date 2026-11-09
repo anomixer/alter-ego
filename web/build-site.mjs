@@ -36,6 +36,8 @@ const out = resolve(arg("out", join(here, "_site")));
 const pageFiles = [
   ["index.html", "index.html"],
   ["assets/alter-ego-logo.png", "assets/alter-ego-logo.png"],
+  ["assets/favicon-16.png", "assets/favicon-16.png"],
+  ["assets/favicon-32.png", "assets/favicon-32.png"],
   ["nes/index.html", "nes/index.html"],
   ["nes/app.js", "nes/app.js"],
   ["nes/audio.js", "nes/audio.js"],
