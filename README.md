@@ -19,10 +19,14 @@ Play in a browser — every target has a page:
 | Target | Play | What runs there |
 | --- | --- | --- |
 | NES (original) | 👉 [PLAY HERE](https://anomixer.github.io/alter-ego/nes/index.html) | the jsnes page in [`web/nes/`](web/nes/), playing the ROM compiled from `src/` when the site was built |
-| Apple IIgs | 👉 [PLAY HERE](https://a2gsemu-ia.pages.dev/?lang=en&game=https%3A%2F%2Fgithub.com%2Fanomixer%2Falter-ego) | a2gsemu-ia booting the released 800 KiB disk (tag `v0.0.2`); `Q`, then `Y`, leaves the game on its exit screen |
-| Apple //e + VERA | 👉 [PLAY HERE](https://apple2ts.com/?slot2=vera&tab=vera#https://raw.githubusercontent.com/anomixer/alter-ego/master/vera/build/alter-ego-vera.hdv) | Apple2TS streaming [`vera/build/alter-ego-vera.hdv`](vera/build/alter-ego-vera.hdv) from this repository |
+| Apple IIgs | 👉 [PLAY HERE](https://a2gsemu-ia.pages.dev/?lang=en&game=https%3A%2F%2Fgithub.com%2Fanomixer%2Falter-ego) | a2gsemu-ia booting the released 800 KiB disk (`AlterEgo.2mg`, tag `v0.0.2`); `Q`, then `Y`, leaves the game on its exit screen |
+| Apple //e + VERA | 👉 [PLAY HERE](https://apple2ts.com/?slot2=vera&tab=vera#https://github.com/anomixer/alter-ego/releases/download/v0.0.2/alter-ego-vera.hdv) | Apple2TS streaming the **release asset** [`alter-ego-vera.hdv`](https://github.com/anomixer/alter-ego/releases/download/v0.0.2/alter-ego-vera.hdv) (819,200 bytes, SHA256 `DAE41352…`); the download URL sends no CORS header, so Apple2TS fetches it through its CORS-proxy fallback (`proxy.corsfix.com`), which was checked in Chrome |
 | Commander X16 | 👉 [PLAY HERE](https://anomixer.github.io/alter-ego/x16/index.html) | the X16 build on the official X16Community r49 WebAssembly emulator: `LOADER.PRG` plus the 26 level files from `x16/spike/dist/` are copied into its virtual drive; the emulator release itself is downloaded and checksum-checked at build time, not vendored |
 
+The same release carries every downloadable build: `AlterEgo.2mg` and `AlterEgo-full.2mg` (IIgs),
+`alter-ego-vera.hdv`, `alter-ego-vera-psg.hdv`, `alter-ego-vera-D1.po` and `alter-ego-vera-D2.po`
+(Apple //e + VERA), and `alter-ego-x16-sd.zip` (Commander X16).  The NES player has no asset: its ROM
+is compiled from `src/` when the site is deployed.
 
 The repository was called `alter-ego-vera` while VERA was the only target; it is now plain
 `alter-ego`.  Release images keep their `alter-ego-vera*` filenames — those are artifact names, not
@@ -43,6 +47,13 @@ see [`web/nes/README.md`](web/nes/README.md).
 
 The Apple IIgs port is described in [Apple IIgs port](#apple-iigs-port-silky-gs) below; its full
 build notes are in [`iigs/README.md`](iigs/README.md).
+
+**Download:** all four images ship as release assets of
+[`v0.0.2`](https://github.com/anomixer/alter-ego/releases/tag/v0.0.2) — `alter-ego-vera.hdv`
+(819,200 B, SHA256 `DAE41352…`, the FamiTone default), `alter-ego-vera-psg.hdv` (819,200 B,
+`3DDC7EF9…`, streamed PSG) and the FTM dual-floppy pair `alter-ego-vera-D1.po` / `alter-ego-vera-D2.po`
+(143,360 B each, `C93F2B3D…` / `F4D03DCA…`).  The **PLAY HERE** link in the table above streams the
+first of those assets, so the browser plays the released image, not a working copy from `master`.
 
 The image builder and packer are kept in this repository. It bundles the Cadius
 Windows executable, the Applesoft BASIC compiler, the PSG stream
@@ -328,9 +339,9 @@ side supplies the screen, the palette pipeline and the audio mixing.
 - **Download:** tag [`v0.0.2`](https://github.com/anomixer/alter-ego/releases/tag/v0.0.2) is the
   repository's first release.  It carries the two disks below — `AlterEgo.2mg` (819,264 bytes,
   SHA256 `4115CB7F…`) and `AlterEgo-full.2mg` (3,670,080 bytes, SHA256 `3D7EA71E…`), byte for byte
-  the tracked files in `iigs/build/` — and the Commander X16 SD-card package
-  `alter-ego-x16-sd.zip` (41,042 bytes, SHA256 `BB00F886…`; see the X16 section below).  The tag was
-  `iigs-v0.0.2` until 2026-11-06.
+  the tracked files in `iigs/build/` — plus the four Apple //e + VERA images (see the VERA section
+  above) and the Commander X16 SD-card package `alter-ego-x16-sd.zip` (41,061 bytes, SHA256
+  `C4BB7516…`; see the X16 section below).  The tag was `iigs-v0.0.2` until 2026-11-06.
 - **Boot image:** [`iigs/build/AlterEgo.2mg`](iigs/build/AlterEgo.2mg) — a GS/OS boot disk (an
   819,264-byte `.2mg`: a 64-byte 2IMG header plus 1,600 blocks = 800 KiB), volume `ALTEREGO`, that
   boots straight into the game:
@@ -431,11 +442,11 @@ x16emu -prg x16/spike/dist/LOADER.PRG -run -fsroot x16/spike/dist -scale 2
 ```
 
 - For a real machine: [`x16/build/alter-ego-x16-sd.zip`](x16/build/alter-ego-x16-sd.zip)
-  (41,042 B, 37 files) is the SD-card package — unzip it into the card's root, then
+  (41,061 B, 37 files) is the SD-card package — unzip it into the card's root, then
   `LOAD "LOADER.PRG",8,1` and `RUN` (or rename the loader to `AUTOBOOT.X16`).  It holds
   only the files the build loads, plus a plain-text `README.TXT`; `x16/tools/pack-sd.ps1`
   rebuilds it from `x16/spike/dist/`.  Verified by unpacking it into a scratch directory and
-  booting that copy to the title, then into Level 1.  The same file is an asset of the first
+  booting that copy to the title, then into Level 1.  The same bytes are an asset of the first
   release, tag [`v0.0.2`](https://github.com/anomixer/alter-ego/releases/tag/v0.0.2).
 
 - In the browser: <https://anomixer.github.io/alter-ego/x16/index.html> boots the same files on

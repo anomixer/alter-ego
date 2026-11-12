@@ -1,5 +1,48 @@
 # AGENTS.md — alter-ego Apple II VERA port
 
+## Release assets carry the //e + VERA builds, and PLAY HERE points at them (2026-11-12)
+
+- Request: 「releases 也要上傳 Apple //e + VERA版本, 然後所有的play here 也連到 releases 那邊的連結」.
+  The four tracked release images are now assets of the existing release, `v0.0.2` (release
+  id `433617359`), uploaded from `vera/build/` with no repack:
+
+  | Asset | Bytes | SHA256 |
+  |---|---|---|
+  | `alter-ego-vera.hdv` | 819,200 | `DAE41352EB651EA7AE34050CEAD8BB2C25287CF8822DA28284980D859CD8C832` |
+  | `alter-ego-vera-psg.hdv` | 819,200 | `3DDC7EF97C36B1CDACB9EDABF4169C3FE71D01AB5B3D60B1CC7B609CFD178E7C` |
+  | `alter-ego-vera-D1.po` | 143,360 | `C93F2B3D9F0C3BF9D24145135BF6D992BB115D5E1D3B2DC5328FA15FEB4D78B1` |
+  | `alter-ego-vera-D2.po` | 143,360 | `F4D03DCA36EE717488ABCBF6A52012BB859011F43F39B4B4187E3DD4F26FF664` |
+
+  Each upload's API `digest` field equals the local SHA256, and the download URLs answer 200
+  (302 to `release-assets.githubusercontent.com` first).
+- The VERA row of the README PLAY HERE table no longer streams
+  `raw.githubusercontent.com/.../master/vera/build/alter-ego-vera.hdv`; it streams
+  `https://github.com/anomixer/alter-ego/releases/download/v0.0.2/alter-ego-vera.hdv`, so a browser
+  plays the released image rather than the working copy.
+- Why that link needs the emulator's proxy: the release download chain sends no
+  `access-control-allow-origin` header (checked with an `Origin:` request, and a plain `fetch` of it
+  from another origin fails in Chrome: `Failed to fetch`), while `raw.githubusercontent.com` sends
+  `*`.  Apple2TS handles this itself — its bundle falls back to `https://proxy.corsfix.com/?url=…` —
+  and a headless-Chrome NetLog of the exact PLAY HERE URL shows one direct attempt, then the proxied
+  GET returning **200**, `content-length: 819200`, `x-corsfix-status: success`,
+  `content-disposition: attachment; filename=alter-ego-vera.hdv`.  So the release URL loads the full
+  disk; the standby screen seen in a virtual-time screenshot is just the pre-boot frame.
+- The IIgs PLAY HERE link stays `game=https://github.com/anomixer/alter-ego`: a2gsemu-ia resolves that
+  repository to the released `.2mg`, and handing it the direct asset URL
+  (`…/releases/download/v0.0.2/AlterEgo.2mg`) drops it back to its catalogue welcome screen instead.
+  The NES and X16 PLAY HERE pages are the browser players themselves, so they cannot be release
+  files; the release body and the README now list all seven assets together anyway.
+- The X16 package was refreshed at the same time: the shipped `alter-ego-x16-sd.zip` was the
+  2026-11-06 bytes (41,042 B, `BB00F886…`), i.e. older than the 2026-11-08 pause-cue fix, and the
+  tracked `x16/build/alter-ego-x16-sd.zip` is 41,061 B, SHA256
+  `C4BB7516FDA2CE1A38ADCCC6169814B56FDDEC5133F8D5A04FCE227CC78F232A`.  The stale asset was deleted
+  and the current one uploaded; the size/hash in `README.md`, `x16/README.md` and `x16/readme-tw.md`
+  now quote 41,061 / `C4BB7516…`.  The 2026-11-06 figures in `iigs/CHANGES.md` and `iigs/AGENTS.md`
+  are historical records of that day and stay as they were.
+- Files touched: `README.md` (VERA Download paragraph, the four-row PLAY HERE table plus the asset
+  list under it, IIgs Download bullet, X16 package sizes), `x16/README.md`, `x16/readme-tw.md`, this
+  entry.  No image changed bytes; the release assets are the tracked files.
+
 ## Pause-menu confirm cues (2026-11-08)
 
 - Report, on both the X16 port and this build (they share `vera/src/a2vera/main.c`):

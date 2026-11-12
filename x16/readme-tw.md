@@ -78,9 +78,9 @@ powershell -NoProfile -ExecutionPolicy Bypass -File x16\tools\shot.ps1 `
 
 ## SD 卡發行包
 
-[`x16/build/alter-ego-x16-sd.zip`](build/alter-ego-x16-sd.zip)（41,042 B、37 個檔案、SHA256 `bb00f886…35b1f8fc`）就是
+[`x16/build/alter-ego-x16-sd.zip`](build/alter-ego-x16-sd.zip)（41,061 B、37 個檔案、SHA256 `c4bb7516…78f232a`）就是
 交給 X16 使用者的成品：解壓到 SD 卡**根目錄**即可。它也跟著 repo 的第一個 release（tag
-[`v0.0.2`](https://github.com/anomixer/alter-ego/releases/tag/v0.0.2)，旁邊就是兩張 IIgs 磁碟）一起發佈，
+[`v0.0.2`](https://github.com/anomixer/alter-ego/releases/tag/v0.0.2)，旁邊就是兩張 IIgs 磁碟與四張 Apple //e + VERA 映像檔）一起發佈，
 所以 X16 使用者不必 clone 就能下載。`build.ps1` 跑完後可重新打包：
 
 ```powershell
